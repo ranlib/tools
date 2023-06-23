@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
 Parse input files and create output annotation file
+This version also reads in json file.
 
 Input:
 SnpEff annotated VCF file 
@@ -15,7 +16,8 @@ import argparse
 import csv
 import json
 import re
-from nested_lookup import nested_lookup
+import gzip
+import io
 
 parser = argparse.ArgumentParser(description="Parse annotated vcf file")
 parser.add_argument("--name", "-n", help="Name of sample", required=True)
@@ -68,7 +70,11 @@ header = ["Sample ID", "CHROM", "POS", "REF", "ALT", "Read Depth", "Percent Alt 
 with open(args.output, "w") as output:
     writer = csv.DictWriter(output, fieldnames=header, delimiter="\t")
     writer.writeheader()
-    with open(args.vcf, "r") as vcf:
+    if args.vcf.endswith(".gz"):
+        F = io.TextIOWrapper(io.BufferedReader(gzip.open(args.vcf)))
+    else:
+        F = open(args.vcf, "r")
+    with F as vcf:
         for lines in vcf:
             if lines.startswith("#"):
                 continue
@@ -79,10 +85,13 @@ with open(args.output, "w") as output:
             rformat = fields[8].split(":")  # format
             rarr = fields[9].split(":")  # format numbers
             res = dict(zip(rformat, rarr))
-            read_depth = res["DP"]
+            read_depth = int(res["DP"])
             if "AD" in res:
                 (num_ref, num_alt) = res["AD"].split(",")
-                perc_alt = round(float(num_alt) * 100.0 / float(read_depth), 2)
+                if read_depth > 0:
+                    perc_alt = round(float(num_alt) * 100.0 / float(read_depth), 2)
+                else:
+                    perc_alt = 2000
             else:
                 perc_alt = 1000
             annot = fields[7].split(";")
@@ -91,7 +100,7 @@ with open(args.output, "w") as output:
                 pair = element.split("=")
                 if len(pair)==2:
                     annot_dict[pair[0]] = pair[1]
-                    
+
             subannot = annot_dict["ANN"].split(",")
             smallannot = subannot[0].split("|")
             if smallannot[2] == "MODIFIER":
@@ -366,7 +375,7 @@ with open(args.output, "w") as output:
             drug_annotation = []
             if gene_id in json_annotation:
                 if nucleotide_change in list(json_annotation[gene_id].keys()):
-                    if position in json_annotation[gene_id][nucleotide_change]['genome_positions']:
+                    if int(position) in json_annotation[gene_id][nucleotide_change]['genome_positions']:
                         for index, entry in enumerate(json_annotation[gene_id][nucleotide_change]['annotations']):
                             pair = ['None', 'None']
                             if 'drug' in entry:
@@ -375,7 +384,7 @@ with open(args.output, "w") as output:
                                 pair[1] = entry['who_confidence']
                             drug_annotation.append(";".join(pair))
                 elif amino_acid_change in list(json_annotation[gene_id].keys()):
-                    if position in json_annotation[gene_id][amino_acid_change]['genome_positions']:
+                    if int(position) in json_annotation[gene_id][amino_acid_change]['genome_positions']:
                         for index, entry in enumerate(json_annotation[gene_id][amino_acid_change]['annotations']):
                             pair = ['None', 'None']
                             if 'drug' in entry:
