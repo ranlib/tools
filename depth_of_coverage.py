@@ -18,24 +18,27 @@ parser.add_argument("--output",help="output base name",required=True)
 parser.add_argument("--csv",help="output csv file",required=True)
 args = parser.parse_args()
 
-c = f"samtools faidx {args.reference}"
-os.system(c)
-
-dict_file = Path(args.reference)
-dict_file.with_suffix(".dict")
-if not dict_file.exists():
-    c = f"gatk CreateSequenceDictionary --REFERENCE {args.reference}"
-    os.system(c)
-
-c = f"gatk BuildBamIndex --INPUT {args.bam}"
-os.system(c)
-
 # create output directory
 if os.path.isdir(args.output):
     print(f"<E> directory {args.output} already exists.")
     sys.exit(1)
 else:
     os.makedirs(args.output)
+
+# create faidx file
+c = f"samtools faidx {args.reference}"
+os.system(c)
+
+# create dict file
+dict_file = Path(args.reference)
+dict_file = dict_file.with_suffix(".dict")
+if not dict_file.exists():
+    c = f"gatk CreateSequenceDictionary --REFERENCE {args.reference}"
+    os.system(c)
+
+# index bam file
+c = f"gatk BuildBamIndex --INPUT {args.bam}"
+os.system(c)
 
 # coverage with lower coverage cut off at args.lower_coverage
 output = os.path.join(args.output, args.output)
