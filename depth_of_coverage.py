@@ -57,8 +57,8 @@ d = d.drop(columns=d.columns[d.columns.str.contains('granular', regex=True)])
 d = d.drop(columns=d.columns[d.columns.str.contains('cvg', regex=True)])
 header = [ e.replace(args.output+"_", "") for e in d.columns ]
 d.columns = header
-d[['Target', 'Start-Stop']] = d['Target'].str.split(':', 1, expand=True)
-d[['Start','Stop']] = d['Start-Stop'].str.split('-', 1, expand=True)
+d[['Target', 'Start-Stop']] = d['Target'].str.split(':', expand=True)
+d[['Start','Stop']] = d['Start-Stop'].str.split('-', expand=True)
 d = d.drop(["Start-Stop"], axis=1)
 d = d.reindex(columns=['Target', 'Start', 'Stop', 'total_coverage', 'average_coverage','%_above_1'])
 
