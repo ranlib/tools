@@ -6,6 +6,8 @@ it parses files and creates a final annotation file
 import argparse
 import csv
 import re
+import gzip
+import io
 
 parser = argparse.ArgumentParser(description="Parse annotated vcf file")
 parser.add_argument("--name", "-n", help="Name of sample", required=True)
@@ -53,27 +55,44 @@ header = ["Sample ID", "CHROM", "POS", "REF", "ALT", "Read Depth", "Percent Alt 
           "Nucleotide Change", "Position within CDS ", "Amino acid Change", "REF Amino acid", "ALT Amino acid",
           "Codon Position", "Gene Name", "Gene ID"]
 with open(args.output, "w") as output:
-    with open(args.vcf, "r") as vcf:
+    with io.TextIOWrapper(io.BufferedReader(gzip.open(args.vcf))) as vcf:
         writer = csv.DictWriter(output, fieldnames=header, delimiter="\t")
         writer.writeheader()
 
         for lines in vcf:
+            # skip comment lines
             if lines.startswith("#"):
                 continue
+
             fields = lines.rstrip("\r\n").split("\t")
             position = fields[1]
             reference = fields[3]
             alternate = fields[4]
+            #qual = fields[5] # not used
+            filterf = fields[6]
+            info = fields[7]
             rformat = fields[8].split(":")  # format
             rarr = fields[9].split(":")  # format numbers
             res = dict(zip(rformat, rarr))
+
+            # if not PASS info field not necessarily ; separated list of X=Y elements
+            if filterf not in [ "PASS" ]:
+                continue
+            
             read_depth = res["DP"]
             if "AD" in res:
                 (num_ref, num_alt) = res["AD"].split(",")
                 perc_alt = round(float(num_alt) * 100.0 / float(read_depth), 2)
             else:
                 perc_alt = 1000
-            annot_dict = dict([x.split("=") for x in fields[7].split(";")])
+
+            info_list = info.split(";")
+            annot_dict = {}
+            for element in info_list:
+                element_list = element.split("=")
+                if len(element_list) == 2:
+                    annot_dict[ element_list[0] ] = element_list[1]
+                    
             subannot = annot_dict["ANN"].split(",")
             smallannot = subannot[0].split("|")
             if smallannot[2] == "MODIFIER":
