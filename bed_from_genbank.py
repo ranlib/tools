@@ -10,8 +10,8 @@ from Bio import SeqIO
 
 # Set up argument parser
 parser = argparse.ArgumentParser(description="bed from genbank")
-parser.add_argument("--genbank", "-g", type=str, help="Name of genbank file")
-parser.add_argument("--bed", "-b", type=str, help="Name of bed file")
+parser.add_argument("--genbank", "-g", type=str, help="Name of genbank file", required = True)
+parser.add_argument("--bed", "-b", type=str, help="Name of bed file", required  = True)
 args = parser.parse_args()
 
 
