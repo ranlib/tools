@@ -215,20 +215,6 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def get_coverage_for_gene(gene: str) -> list[int]:
-    regions = pandas.read_csv(args.bed, sep="\t", header=None)
-    regions.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
-    coverage = pandas.read_csv(args.coverage)
-    coverage["Start"] = coverage["Start"] - 1
-    gene_coverage = pandas.merge(coverage, regions, on="Start", how="right")
-    filter = gene_coverage.gene == gene
-    coverage_percentage = gene_coverage.loc[filter, "%_above_10"].values.tolist()
-    coverage_percentage_value = coverage_percentage[0] if len( coverage_percentage ) > 0 else 0 
-    coverage_average = gene_coverage.loc[filter, "average_coverage"].values.tolist()
-    coverage_average_value = coverage_average[0] if len( coverage_average ) > 0 else 0
-    return [ coverage_average_value, coverage_percentage_value ]
-
-    
 def add_drug_annotation(input: str, annotation: str):
     tsv = pandas.read_csv(input, sep="\t")
 
@@ -290,10 +276,10 @@ def add_drug_annotation(input: str, annotation: str):
     return tsv_out
 
     
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}):
-    #
-    # interpretation
-    #
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, minimum_coverage: int):
+    """
+    interpretation
+    """
     header = [ "Sample ID","Gene Name", "Gene ID", "POS", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
     tsv_interpretation = tsv.loc[ :, header ]
     tsv_interpretation["average_coverage_in_region"] = [0]*len(tsv_interpretation.index)
@@ -395,9 +381,9 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}):
     for sample in tsv_interpretation["Sample ID"].unique().tolist():
         for gene in (gene_list_1 + gene_list_2):
             if gene not in genes_count_dict:
-                average_coverage_in_region = get_coverage_for_gene(gene)[0]
-                percent_above_threshold = get_coverage_for_gene(gene)[1]
-                if average_coverage_in_region > args.lower_coverage:
+                average_coverage_in_region = coverage_average[gene]
+                percent_above_threshold = coverage_percentage[gene]
+                if average_coverage_in_region > minimum_coverage:
                     # 4.1 there is coverage
                     for drug in drug_info[gene].split(","):
                         tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
@@ -436,20 +422,32 @@ if __name__ == "__main__":
     parser.add_argument("--json", "-j", type=str, help="json file with drug annotation", required=True)
     parser.add_argument("--bed", "-b", type=str, help="bed file with regions of interest", required=True)
     parser.add_argument("--coverage", "-c", type=str, help="csv file with coverage for regions of interest", required=True)
-    parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", required=True, default=0)
-    parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", required=True, default=0)
-    parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", required=True, default=0)
+    parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", default=0)
+    parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", default=0)
+    parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)",  default=0)
     parser.add_argument("--output", "-o", type=str, help="tsv output file", required=True)
     parser.add_argument("--report", "-r", type=str, help="another tsv output file", required=True)
     args = parser.parse_args()
 
+    # get drug annotation
     tsv_out = add_drug_annotation(args.tsv, args.json)
     tsv_out.to_csv(args.output, index=False, sep="\t")
 
+    # get intervals
+    # get drug information
     regions = pandas.read_csv(args.bed, header=None, sep="\t")
     regions.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
     get_intervals(regions)
     drug_info = dict(zip(regions.gene, regions.chemical))
     
-    tsv_final, genes_count_dict = run_interpretation(tsv_out, drug_info)
+    # get coverage
+    coverage = pandas.read_csv(args.coverage)
+    coverage["Start"] = coverage["Start"] - 1
+    coverage.rename(columns={ "%_above_10": "percent_above_threshold"}, inplace=True)
+    gene_coverage = pandas.merge(coverage, regions, on="Start", how="right")
+    coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
+    coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
+
+    # get interpretation
+    tsv_final, genes_count_dict = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, args.minimum_coverage)
     tsv_final.to_csv(args.report, index=False, sep="\t")
