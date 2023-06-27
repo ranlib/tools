@@ -35,7 +35,7 @@ def get_intervals(regions: pandas.DataFrame):
             rrl_rRNA = Interval(1, row["Stop"] - row["Start"])
             # position in CDS
             rrl_rRNA_1 = Interval(2003, 2367).union( Interval(2449, 3056) )
-            #not in [2003, 2367] and not in [2449, 3056]
+            # not in [2003, 2367] and not in [2449, 3056]
             rrl_rRNA_1_complement = rrl_rRNA_1.complement(rrl_rRNA)
 
         if row["gene"] == "rpoB":
@@ -305,8 +305,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
             genes_count_dict[row["Gene Name"]] = 1
 
         # 0. add region average coverage (depth) information
-        tsv_interpretation.loc[index, "average_coverage_in_region"] = get_coverage_for_gene(row["Gene Name"])[0]
-        tsv_interpretation.loc[index, "percent_above_threshold"] = get_coverage_for_gene(row["Gene Name"])[1]
+        tsv_interpretation.loc[index, "average_coverage_in_region"] = coverage_average[row["Gene Name"]]
+        tsv_interpretation.loc[index, "percent_above_threshold"] = coverage_percentage[row["Gene Name"]]
             
         # 1.
         if row["Gene Name"] in gene_list_1:
