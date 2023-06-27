@@ -46,6 +46,7 @@ d["AF"] = d["AD_ALT"]/d["DP"].fillna(0)
 
 s = pandas.read_csv(snpsift, sep="\t")
 s["AF"] = d["AF"]
+s["AD_ALT"] = d["AD_ALT"]
 #s["Sample ID"] = [args.samplename] * len(s.index)
 s.insert(0, "Sample ID" , [args.samplename] * len(s.index) )
 s.columns = [ e.replace("ANN[0].","") for e in s.columns ]
@@ -56,7 +57,8 @@ s.columns = [ e.replace("ANN[0].","") for e in s.columns ]
 
 #CHROM   POS     REF     ALT     FILTER  AF      AD      DP      GENE    GENEID  EFFECT  IMPACT  HGVS_C  HGVS_P  CDS_POS
 
-s.rename( columns = { "DP": "Read Depth"}, inplace = True)
+s.rename( columns = { "DP": "Total Read Depth"}, inplace = True)
+s.rename( columns = { "AD_ALT": "Variant Read Depth"}, inplace = True)
 s.rename( columns = { "AF": "Percent Alt Allele"}, inplace = True)
 s.rename( columns = { "GENE": "Gene Name"}, inplace = True)
 s.rename( columns = { "GENEID": "Gene ID"}, inplace = True)
