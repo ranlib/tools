@@ -154,7 +154,7 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             looker = mdl = "U"
 
     if gene == "rrl":
-        if rrl_rRNA_1.contains(cds_position) & is_synonymous:
+        if rrl_rRNA_1.contains(cds_position):
             looker = mdl = "U"
         if rrl_rRNA_1_complement.contains(cds_position):
             looker = "S"
@@ -176,7 +176,7 @@ def get_interpretation_2_2_1(annotation: str) -> list[str]:
                      "nonsense_variant" ]
     looker = mdl = ""
     if annotation in effect_types:
-        looker = mdl = "S"
+        looker = mdl = "U"
     else:
         if is_synonymous:
             looker = mdl = "S"
@@ -193,8 +193,7 @@ def get_interpretation_2_2_2(cds_position: int, annotation: str) -> list[str]:
         if is_synonymous:
             looker = mdl = "S"
         if is_nonsynonymous:
-            looker = "R"
-            mdl = "R"
+            looker = mdl = "R"
     else:
         if is_synonymous:
             looker = mdl = "S"
@@ -216,7 +215,7 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def get_coverage_for_gene(gene: str) -> int:
+def get_coverage_for_gene(gene: str) -> list[int]:
     regions = pandas.read_csv(args.bed, sep="\t", header=None)
     regions.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
     coverage = pandas.read_csv(args.coverage)
@@ -224,24 +223,10 @@ def get_coverage_for_gene(gene: str) -> int:
     gene_coverage = pandas.merge(coverage, regions, on="Start", how="right")
     filter = gene_coverage.gene == gene
     coverage_percentage = gene_coverage.loc[filter, "%_above_10"].values.tolist()
+    coverage_percentage_value = coverage_percentage[0] if len( coverage_percentage ) > 0 else 0 
     coverage_average = gene_coverage.loc[filter, "average_coverage"].values.tolist()
-    
-    if len( coverage_percentage ) > 0:
-        percentage_is_ok = coverage_percentage[0] > 0
-    else:
-        percentage_is_ok = False
-        
-    if len( coverage_average ) > 0:
-        average_is_ok = coverage_average[0] > 0
-    else:
-        average_is_ok = False
-        
-    if len( coverage_average ) > 0:
-        average_coverage_value = coverage_average[0]
-    else:
-        average_coverage_value = 0
-        
-    return average_coverage_value
+    coverage_average_value = coverage_average[0] if len( coverage_average ) > 0 else 0
+    return [ coverage_average_value, coverage_percentage_value ]
 
 def get_drug_information_for_gene(gene: str) -> list[str]:
     drug_info = pandas.read_csv(args.bed, sep="\t", header=None)
@@ -320,20 +305,28 @@ def run_interpretation(tsv: pandas.DataFrame):
     #
     # interpretation
     #
-    header = [ "Sample ID","Gene Name", "Gene ID", "POS", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "confidence", "antimicrobial", "Read Depth", "Percent Alt Allele", "rationale"]
+    header = [ "Sample ID","Gene Name", "Gene ID", "POS", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
     tsv_interpretation = tsv.loc[ :, header ]
-    tsv_interpretation["depth"] = [0]*len(tsv_interpretation.index)
+    tsv_interpretation["average_coverage_in_region"] = [0]*len(tsv_interpretation.index)
+    tsv_interpretation["percent_above_10"] = [0]*len(tsv_interpretation.index)
+    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100 # use %
     
     genes_count_dict = {}
-    
     for index, row in tsv_interpretation.iterrows():
+             
+        if row["antimicrobial"].strip() == "":
+            # this could be a comman separated list of chemicals
+            chemicals = get_drug_information_for_gene(row["Gene Name"])
+            tsv_interpretation.at[index, "antimicrobial"] = ",".join(chemicals)
+
         if row["Gene Name"] in genes_count_dict:
             genes_count_dict[row["Gene Name"]] = genes_count_dict[row["Gene Name"]] + 1
         else:
             genes_count_dict[row["Gene Name"]] = 1
 
         # 0. add region average coverage (depth) information
-        tsv_interpretation.loc[index, "depth"] = get_coverage_for_gene(row["Gene Name"])
+        tsv_interpretation.loc[index, "average_coverage_in_region"] = get_coverage_for_gene(row["Gene Name"])[0]
+        tsv_interpretation.loc[index, "percent_above_10"] = get_coverage_for_gene(row["Gene Name"])[1]
             
         # 1.
         if row["Gene Name"] in gene_list_1:
@@ -347,7 +340,8 @@ def run_interpretation(tsv: pandas.DataFrame):
                 looker_mdl = get_interpretation_1_2(row["Gene Name"], row["POS"], row["Position within CDS "], row["Annotation"])
                 tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                 tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
-                row["confidence"] = "no WHO annotation"
+                tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
+                tsv_interpretation.loc[index, "rationale"] = "expert rule"
 
         # 2.
         if row["Gene Name"] in gene_list_2:
@@ -363,14 +357,16 @@ def run_interpretation(tsv: pandas.DataFrame):
                     looker_mdl = get_interpretation_2_2_1(row["Annotation"])
                     tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                     tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
-                    row["confidence"] = "no WHO annotation"
+                    tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
+                    tsv_interpretation.loc[index, "rationale"] = "expert rule"
 
                 # 2.2.2 just rpoB
                 if row["Gene Name"] == "rpoB":
                     looker_mdl = get_interpretation_2_2_2(row["Annotation"])
                     tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                     tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
-                    row["confidence"] = "no WHO annotation"
+                    tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
+                    tsv_interpretation.loc[index, "rationale"] = "expert rule"
                     
                 
         # 3.
@@ -385,7 +381,8 @@ def run_interpretation(tsv: pandas.DataFrame):
                 looker_mdl = get_interpretation_3_2(row["Annotation"])
                 tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                 tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
-                row["confidence"] = "no WHO annotation"
+                tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
+                tsv_interpretation.loc[index, "rationale"] = "expert rule"
 
     # 4.
     # loop over genes of interest,
@@ -402,7 +399,8 @@ def run_interpretation(tsv: pandas.DataFrame):
     for sample in tsv_interpretation["Sample ID"].unique().tolist():
         for gene in (gene_list_1 + gene_list_2):
             if gene not in genes_count_dict:
-                average_coverage_in_region = get_coverage_for_gene(gene)
+                average_coverage_in_region = get_coverage_for_gene(gene)[0]
+                percent_above_10 = get_coverage_for_gene(gene)[1]
                 if average_coverage_in_region > args.lower_coverage:
                     # 4.1 there is coverage
                     for drug in get_drug_information_for_gene(gene):
@@ -411,9 +409,10 @@ def run_interpretation(tsv: pandas.DataFrame):
                         tsv_additional.loc[index, "Gene Name"] = gene
                         tsv_additional.loc[index, "rationale"] = "WT"
                         tsv_additional.loc[index, "antimicrobial"] = drug
-                        tsv_additional.loc[index, "depth"] = average_coverage_in_region
+                        tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
+                        tsv_additional.loc[index, "percent_above_10"] = percent_above_10
                         tsv_additional.loc[index, "looker"] = "S"
-                        tsv_additional.loc[index, "mdl"] = "S"
+                        tsv_additional.loc[index, "mdl"] = "WT"
                         index = index + 1
                 else:
                     # 4.2 there is not enough coverage
@@ -423,9 +422,10 @@ def run_interpretation(tsv: pandas.DataFrame):
                         tsv_additional.loc[index, "Gene Name"] = gene
                         tsv_additional.loc[index, "rationale"] = "Insufficient Coverage"
                         tsv_additional.loc[index, "antimicrobial"] = drug
-                        tsv_additional.loc[index, "depth"] = average_coverage_in_region
-                        tsv_additional.loc[index, "looker"] = "U" # ?
-                        tsv_additional.loc[index, "mdl"] = "U" # ?
+                        tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
+                        tsv_additional.loc[index, "percent_above_10"] = percent_above_10
+                        tsv_additional.loc[index, "looker"] = "Insufficient Coverage"
+                        tsv_additional.loc[index, "mdl"] = "Insufficient Coverage"
                         index = index + 1
                 
     tsv_final = pandas.concat([tsv_interpretation, tsv_additional])
