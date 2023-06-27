@@ -8,9 +8,9 @@ from sympy import Interval
 def get_intervals(regions: pandas.DataFrame):
     
     for index, row in regions.iterrows():
-        if row["gene"] == "mmpR":
-            mmpR = Interval(row["Start"], row["Stop"])        
-            mmpR_promoter = Interval(row["Start"] - 84, row["Stop"] - 1)    
+        if row["gene"] == "mmpR5":
+            mmpR5 = Interval(row["Start"], row["Stop"])        
+            mmpR5_promoter = Interval(row["Start"] - 84, row["Stop"] - 1)    
 
         if row["gene"] == "atpE":
             atpE = Interval(row["Start"], row["Stop"])        
@@ -42,7 +42,7 @@ def get_intervals(regions: pandas.DataFrame):
             # position in CDS
             rpoB_codon = Interval(426, 452)
 
-gene_list_1 = [ "mmpR", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC" ]
+gene_list_1 = [ "mmpR5", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC" ]
 gene_list_2 = [ "katG", "pncA", "ethA", "gid", "rpoB" ]
 gene_list_3 = [ "katG", "pncA", "ethA", "gid" ]
 
@@ -103,7 +103,7 @@ mdl_3_1 = {
 
 def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, annotation: str) -> list[str]:
     """
-    get interpretation for mmpR, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
+    get interpretation for mmpR5, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
     """
     is_synonymous = (annotation == "synonymous_variant")
     is_nonsynonymous = (annotation != "synonymous_variant")
@@ -123,12 +123,12 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
         if mmpL5.contains(genomic_position) & is_nonsynonymous:
             looker = mdl = "U"
             
-    if gene == "mmpR":
-        if mmpR.contains(genomic_position) & is_synonymous:
+    if gene == "mmpR5":
+        if mmpR5.contains(genomic_position) & is_synonymous:
             looker = mdl = "S"
-        if mmpR.contains(genomic_position) & is_nonsynonymous:
+        if mmpR5.contains(genomic_position) & is_nonsynonymous:
             looker = mdl = "U"
-        if mmpR_promoter.contains(genomic_position):
+        if mmpR5_promoter.contains(genomic_position):
             looker = mdl = "U"
 
     if gene == "mmpS5":
@@ -228,17 +228,6 @@ def get_coverage_for_gene(gene: str) -> list[int]:
     coverage_average_value = coverage_average[0] if len( coverage_average ) > 0 else 0
     return [ coverage_average_value, coverage_percentage_value ]
 
-def get_drug_information_for_gene(gene: str) -> list[str]:
-    drug_info = pandas.read_csv(args.bed, sep="\t", header=None)
-    drug_info.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
-    filter = drug_info.gene == gene
-    chemicals = drug_info.loc[filter, "chemical"]
-    drugs = chemicals.values.tolist()
-    if len(drugs) > 0:
-        drugs = drugs[0].split(",")
-    else:
-        drugs = []
-    return drugs
     
 def add_drug_annotation(input: str, annotation: str):
     tsv = pandas.read_csv(input, sep="\t")
@@ -301,25 +290,29 @@ def add_drug_annotation(input: str, annotation: str):
     return tsv_out
 
     
-def run_interpretation(tsv: pandas.DataFrame):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}):
     #
     # interpretation
     #
     header = [ "Sample ID","Gene Name", "Gene ID", "POS", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
     tsv_interpretation = tsv.loc[ :, header ]
     tsv_interpretation["average_coverage_in_region"] = [0]*len(tsv_interpretation.index)
-    tsv_interpretation["percent_above_10"] = [0]*len(tsv_interpretation.index)
+    tsv_interpretation["percent_above_threshold"] = [0]*len(tsv_interpretation.index)
     tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100 # use %
     tsv_interpretation["Comment"] = [""]*len(tsv_interpretation.index)
-    
-    #if row["antimicrobial"].strip() == "":
-    #    # this could be a comman separated list of chemicals
-    #    chemicals = get_drug_information_for_gene(row["Gene Name"])
-    #    tsv_interpretation.at[index, "antimicrobial"] = ",".join(chemicals)
-    
+
     genes_count_dict = {}
     for index, row in tsv_interpretation.iterrows():
              
+        if row["antimicrobial"].strip() == "":
+            # this could be a comma separated list of chemicals
+            gene = row["Gene Name"]
+            if gene in drug_info:
+                chemicals = drug_info[gene]
+            else:
+                chemicals = ""
+            tsv_interpretation.loc[index, "antimicrobial"] = chemicals
+
         if row["Gene Name"] in genes_count_dict:
             genes_count_dict[row["Gene Name"]] = genes_count_dict[row["Gene Name"]] + 1
         else:
@@ -327,7 +320,7 @@ def run_interpretation(tsv: pandas.DataFrame):
 
         # 0. add region average coverage (depth) information
         tsv_interpretation.loc[index, "average_coverage_in_region"] = get_coverage_for_gene(row["Gene Name"])[0]
-        tsv_interpretation.loc[index, "percent_above_10"] = get_coverage_for_gene(row["Gene Name"])[1]
+        tsv_interpretation.loc[index, "percent_above_threshold"] = get_coverage_for_gene(row["Gene Name"])[1]
             
         # 1.
         if row["Gene Name"] in gene_list_1:
@@ -347,8 +340,8 @@ def run_interpretation(tsv: pandas.DataFrame):
         # 2.
         if row["Gene Name"] in gene_list_2:
             # 2.1
-            if row["antimicrobial"] != "":
-                print(">>> no antimicrobial")
+            #if row["antimicrobial"] != "":
+            #    print(">>> no antimicrobial")
             if (row["confidence"] != "") & (row["antimicrobial"] != ""):
                 tsv_interpretation.loc[index, "looker"] = looker_2_2[ row["confidence"] ]
                 tsv_interpretation.loc[index, "mdl"] = mdl_2_2[ row["confidence"] ]
@@ -403,30 +396,30 @@ def run_interpretation(tsv: pandas.DataFrame):
         for gene in (gene_list_1 + gene_list_2):
             if gene not in genes_count_dict:
                 average_coverage_in_region = get_coverage_for_gene(gene)[0]
-                percent_above_10 = get_coverage_for_gene(gene)[1]
+                percent_above_threshold = get_coverage_for_gene(gene)[1]
                 if average_coverage_in_region > args.lower_coverage:
                     # 4.1 there is coverage
-                    for drug in get_drug_information_for_gene(gene):
+                    for drug in drug_info[gene].split(","):
                         tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
                         tsv_additional.loc[index, "Sample ID"] = sample
                         tsv_additional.loc[index, "Gene Name"] = gene
                         tsv_additional.loc[index, "rationale"] = "WT"
                         tsv_additional.loc[index, "antimicrobial"] = drug
                         tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
-                        tsv_additional.loc[index, "percent_above_10"] = percent_above_10
+                        tsv_additional.loc[index, "percent_above_threshold"] = percent_above_threshold
                         tsv_additional.loc[index, "looker"] = "S"
                         tsv_additional.loc[index, "mdl"] = "WT"
                         index = index + 1
                 else:
                     # 4.2 there is not enough coverage
-                    for drug in get_drug_information_for_gene(gene):
+                    for drug in drug_info[gene].split(","):
                         tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
                         tsv_additional.loc[index, "Sample ID"] = sample
                         tsv_additional.loc[index, "Gene Name"] = gene
                         tsv_additional.loc[index, "rationale"] = "Insufficient Coverage"
                         tsv_additional.loc[index, "antimicrobial"] = drug
                         tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
-                        tsv_additional.loc[index, "percent_above_10"] = percent_above_10
+                        tsv_additional.loc[index, "percent_above_threshold"] = percent_above_threshold
                         tsv_additional.loc[index, "looker"] = "Insufficient Coverage"
                         tsv_additional.loc[index, "mdl"] = "Insufficient Coverage"
                         index = index + 1
@@ -438,12 +431,14 @@ def run_interpretation(tsv: pandas.DataFrame):
 
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file")
+    parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file", prog="add_drug_annotation", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=80))
     parser.add_argument("--tsv", "-t", type=str, help="tsv version of annotated vcf file", required=True)
     parser.add_argument("--json", "-j", type=str, help="json file with drug annotation", required=True)
     parser.add_argument("--bed", "-b", type=str, help="bed file with regions of interest", required=True)
     parser.add_argument("--coverage", "-c", type=str, help="csv file with coverage for regions of interest", required=True)
-    parser.add_argument("--lower_coverage", "-l", type=int, help="lower coverage cutoff", required=True)
+    parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", required=True, default=0)
+    parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", required=True, default=0)
+    parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", required=True, default=0)
     parser.add_argument("--output", "-o", type=str, help="tsv output file", required=True)
     parser.add_argument("--report", "-r", type=str, help="another tsv output file", required=True)
     args = parser.parse_args()
@@ -454,7 +449,7 @@ if __name__ == "__main__":
     regions = pandas.read_csv(args.bed, header=None, sep="\t")
     regions.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
     get_intervals(regions)
+    drug_info = dict(zip(regions.gene, regions.chemical))
     
-    tsv_final, genes_count_dict = run_interpretation(tsv_out)
+    tsv_final, genes_count_dict = run_interpretation(tsv_out, drug_info)
     tsv_final.to_csv(args.report, index=False, sep="\t")
-    #print(genes_count_dict)    
