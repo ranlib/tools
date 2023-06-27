@@ -310,15 +310,16 @@ def run_interpretation(tsv: pandas.DataFrame):
     tsv_interpretation["average_coverage_in_region"] = [0]*len(tsv_interpretation.index)
     tsv_interpretation["percent_above_10"] = [0]*len(tsv_interpretation.index)
     tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100 # use %
+    tsv_interpretation["Comment"] = [""]*len(tsv_interpretation.index)
+    
+    #if row["antimicrobial"].strip() == "":
+    #    # this could be a comman separated list of chemicals
+    #    chemicals = get_drug_information_for_gene(row["Gene Name"])
+    #    tsv_interpretation.at[index, "antimicrobial"] = ",".join(chemicals)
     
     genes_count_dict = {}
     for index, row in tsv_interpretation.iterrows():
              
-        if row["antimicrobial"].strip() == "":
-            # this could be a comman separated list of chemicals
-            chemicals = get_drug_information_for_gene(row["Gene Name"])
-            tsv_interpretation.at[index, "antimicrobial"] = ",".join(chemicals)
-
         if row["Gene Name"] in genes_count_dict:
             genes_count_dict[row["Gene Name"]] = genes_count_dict[row["Gene Name"]] + 1
         else:
@@ -346,6 +347,8 @@ def run_interpretation(tsv: pandas.DataFrame):
         # 2.
         if row["Gene Name"] in gene_list_2:
             # 2.1
+            if row["antimicrobial"] != "":
+                print(">>> no antimicrobial")
             if (row["confidence"] != "") & (row["antimicrobial"] != ""):
                 tsv_interpretation.loc[index, "looker"] = looker_2_2[ row["confidence"] ]
                 tsv_interpretation.loc[index, "mdl"] = mdl_2_2[ row["confidence"] ]
