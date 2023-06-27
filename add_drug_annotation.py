@@ -290,9 +290,9 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
             # 1.2
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
-                looker_mdl = get_interpretation_1_2(row["Gene Name"], row["POS"], row["Position within CDS"], row["Annotation"])
-                tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
-                tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
+                looker, mdl = get_interpretation_1_2(row["Gene Name"], row["POS"], row["Position within CDS"], row["Annotation"])
+                tsv_interpretation.loc[index, "looker"] = looker
+                tsv_interpretation.loc[index, "mdl"] = mdl
                 tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
                 tsv_interpretation.loc[index, "rationale"] = "expert rule 1.2"
 
@@ -307,17 +307,17 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
                 # 2.2.1 gene_list_2 without rpoB
                 if row["Gene Name"] in gene_list_3:
-                    looker_mdl = get_interpretation_2_2_1(row["Annotation"])
-                    tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
-                    tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
+                    looker, mdl = get_interpretation_2_2_1(row["Annotation"])
+                    tsv_interpretation.loc[index, "looker"] = looker
+                    tsv_interpretation.loc[index, "mdl"] = mdl
                     tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
                     tsv_interpretation.loc[index, "rationale"] = "expert rule 2.2.1"
 
                 # 2.2.2 just rpoB
                 if row["Gene Name"] == "rpoB":
-                    looker_mdl = get_interpretation_2_2_2(row["Position within CDS"], row["Annotation"])
-                    tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
-                    tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
+                    looker, mdl = get_interpretation_2_2_2(row["Position within CDS"], row["Annotation"])
+                    tsv_interpretation.loc[index, "looker"] = looker
+                    tsv_interpretation.loc[index, "mdl"] = mdl
                     tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
                     tsv_interpretation.loc[index, "rationale"] = "expert rule 2.2.2"
 
@@ -330,9 +330,9 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
             # 3.2
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
-                looker_mdl = get_interpretation_3_2(row["Annotation"])
-                tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
-                tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
+                looker, mdl = get_interpretation_3_2(row["Annotation"])
+                tsv_interpretation.loc[index, "looker"] = looker
+                tsv_interpretation.loc[index, "mdl"] = mdl
                 tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
                 tsv_interpretation.loc[index, "rationale"] = "expert rule 3.2"
 
