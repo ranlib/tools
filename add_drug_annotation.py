@@ -1,40 +1,50 @@
 #!/usr/bin/env python
-
-import pandas
+"""
+generate interpretation  
+"""
 import argparse
 import json
+import pandas
 from sympy import Interval
 
+
 def get_intervals(regions: pandas.DataFrame):
-    
+    """
+    generate intervals
+    """
+    global rpoB_codon
+    global mmpS5, mmpL5, rplC, pepQ, atpE, mmpR5
+    global mmpR5_promoter, atpE_promoter, pepQ_promoter, rplC_promoter
+    global rrl_rRNA_1, rrl_rRNA_1_complement
+
     for index, row in regions.iterrows():
         if row["gene"] == "mmpR5":
-            mmpR5 = Interval(row["Start"], row["Stop"])        
-            mmpR5_promoter = Interval(row["Start"] - 84, row["Stop"] - 1)    
+            mmpR5 = Interval(row["Start"], row["Stop"])
+            mmpR5_promoter = Interval(row["Start"] - 84, row["Stop"] - 1)
 
         if row["gene"] == "atpE":
-            atpE = Interval(row["Start"], row["Stop"])        
+            atpE = Interval(row["Start"], row["Stop"])
             atpE_promoter = Interval(row["Start"] - 48, row["Stop"] - 1)
 
         if row["gene"] == "pepQ":
-            pepQ = Interval(row["Start"], row["Stop"])        
+            pepQ = Interval(row["Start"], row["Stop"])
             pepQ_promoter = Interval(row["Start"] - 33, row["Stop"] - 1)
 
         if row["gene"] == "rplC":
-            replC = Interval(row["Start"], row["Stop"])        
-            replC_promoter = Interval(row["Start"] - 18, row["Stop"] - 1)
+            rplC = Interval(row["Start"], row["Stop"])
+            rplC_promoter = Interval(row["Start"] - 18, row["Stop"] - 1)
 
         if row["gene"] == "mmpL5":
-            mmpL5 = Interval(row["Start"], row["Stop"])        
+            mmpL5 = Interval(row["Start"], row["Stop"])
 
         if row["gene"] == "mmpS5":
-            mmpS5 = Interval(row["Start"], row["Stop"])        
+            mmpS5 = Interval(row["Start"], row["Stop"])
 
         if row["gene"] == "rrl":
-            rrl = Interval(row["Start"], row["Stop"])        
+            rrl = Interval(row["Start"], row["Stop"])
             rrl_rRNA = Interval(1, row["Stop"] - row["Start"])
             # position in CDS
-            rrl_rRNA_1 = Interval(2003, 2367).union( Interval(2449, 3056) )
+            rrl_rRNA_1 = Interval(2003, 2367).union(Interval(2449, 3056))
             # not in [2003, 2367] and not in [2449, 3056]
             rrl_rRNA_1_complement = rrl_rRNA_1.complement(rrl_rRNA)
 
@@ -42,73 +52,32 @@ def get_intervals(regions: pandas.DataFrame):
             # position in CDS
             rpoB_codon = Interval(426, 452)
 
-gene_list_1 = [ "mmpR5", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC" ]
-gene_list_2 = [ "katG", "pncA", "ethA", "gid", "rpoB" ]
-gene_list_3 = [ "katG", "pncA", "ethA", "gid" ]
 
-looker_1_1 = {
-    "": "no WHO confidence",
-    "Assoc w R": "R",
-    "Assoc w R - interim": "R - interim",
-    "Not assoc w R": "S",
-    "Not assoc w R - Interim": "S - interim",
-    "Uncertain significance": "U"
-}
+gene_list_1 = ["mmpR5", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
+gene_list_2 = ["katG", "pncA", "ethA", "gid", "rpoB"]
+gene_list_3 = ["katG", "pncA", "ethA", "gid"]
 
-mdl_1_1 = {
-    "": "no WHO confidence",
-    "Assoc w R": "R",
-    "Assoc w R - interim": "U",
-    "Not assoc w R": "S",
-    "Not assoc w R - Interim": "U",
-    "Uncertain significance": "U"
-}
+looker_1_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "R - interim", "Not assoc w R": "S", "Not assoc w R - Interim": "S - interim", "Uncertain significance": "U"}
 
-looker_2_2 = {
-    "": "no WHO confidence",
-    "Assoc w R": "R",
-    "Assoc w R - interim": "R - interim",
-    "Not assoc w R": "S",
-    "Not assoc w R - Interim": "S - interim",
-    "Uncertain significance": "U"
-}
+mdl_1_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U", "Not assoc w R": "S", "Not assoc w R - Interim": "U", "Uncertain significance": "U"}
 
-mdl_2_2 = {
-    "": "no WHO confidence",
-    "Assoc w R": "R",
-    "Assoc w R - interim": "U",
-    "Not assoc w R": "S",
-    "Not assoc w R - Interim": "S",
-    "Uncertain significance": "S"
-}
+looker_2_2 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "R - interim", "Not assoc w R": "S", "Not assoc w R - Interim": "S - interim", "Uncertain significance": "U"}
 
-looker_3_1 = {
-    "": "no WHO confidence",
-    "Assoc w R": "R",
-    "Assoc w R - interim": "R - interim",
-    "Not assoc w R": "S",
-    "Not assoc w R - Interim": "S - interim",
-    "Uncertain significance": "U"
-}
+mdl_2_2 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U", "Not assoc w R": "S", "Not assoc w R - Interim": "S", "Uncertain significance": "S"}
 
-mdl_3_1 = {
-    "": "no WHO confidence",
-    "Assoc w R": "R",
-    "Assoc w R - interim": "U",
-    "Not assoc w R": "S",
-    "Not assoc w R - Interim": "S",
-    "Uncertain significance": "S"
-}
+looker_3_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "R - interim", "Not assoc w R": "S", "Not assoc w R - Interim": "S - interim", "Uncertain significance": "U"}
+
+mdl_3_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U", "Not assoc w R": "S", "Not assoc w R - Interim": "S", "Uncertain significance": "S"}
 
 
 def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, annotation: str) -> list[str]:
     """
     get interpretation for mmpR5, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
     """
-    is_synonymous = (annotation == "synonymous_variant")
-    is_nonsynonymous = (annotation != "synonymous_variant")
-    looker = mds = ""
-    
+    is_synonymous = annotation == "synonymous_variant"
+    is_nonsynonymous = annotation != "synonymous_variant"
+    looker = mdl = ""
+
     if gene == "atpE":
         if atpE.contains(genomic_position) & is_synonymous:
             looker = mdl = "S"
@@ -122,7 +91,7 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             looker = mdl = "S"
         if mmpL5.contains(genomic_position) & is_nonsynonymous:
             looker = mdl = "U"
-            
+
     if gene == "mmpR5":
         if mmpR5.contains(genomic_position) & is_synonymous:
             looker = mdl = "S"
@@ -136,7 +105,7 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             looker = mdl = "S"
         if mmpS5.contains(genomic_position) & is_nonsynonymous:
             looker = mdl = "U"
-    
+
     if gene == "pepQ":
         if pepQ.contains(genomic_position) & is_synonymous:
             looker = mdl = "S"
@@ -160,20 +129,17 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             looker = "S"
             mdl = "U"
 
-    return [looker, mds]
+    return [looker, mdl]
+
 
 def get_interpretation_2_2_1(annotation: str) -> list[str]:
-    is_synonymous = (annotation == "synonymous_variant")
-    is_nonsynonymous = (annotation != "synonymous_variant")
+    """
+    implementation of interpretation according to 2.2.1
+    """
+    is_synonymous = annotation == "synonymous_variant"
+    is_nonsynonymous = annotation != "synonymous_variant"
     # ?
-    effect_types = [ "disruptive_inframe_insertion",
-                     "frameshift_variant",
-                     "stop_lost",
-                     "splice_region_variant",
-                     "missense_variant",
-                     "upstream_gene_variant",
-                     "disruptive_inframe_deletion",
-                     "nonsense_variant" ]
+    effect_types = ["disruptive_inframe_insertion", "frameshift_variant", "stop_lost", "splice_region_variant", "missense_variant", "upstream_gene_variant", "disruptive_inframe_deletion", "nonsense_variant"]
     looker = mdl = ""
     if annotation in effect_types:
         looker = mdl = "U"
@@ -185,11 +151,15 @@ def get_interpretation_2_2_1(annotation: str) -> list[str]:
             mdl = "S"
     return [looker, mdl]
 
+
 def get_interpretation_2_2_2(cds_position: int, annotation: str) -> list[str]:
-    is_synonymous = (annotation == "synonymous_variant")
-    is_nonsynonymous = (annotation != "synonymous_variant")
+    """
+    implementation of interpretation according to 2.2.2
+    """
+    is_synonymous = annotation == "synonymous_variant"
+    is_nonsynonymous = annotation != "synonymous_variant"
     looker = mdl = ""
-    if rpoB_codon.contains(cds_position ):
+    if rpoB_codon.contains(cds_position):
         if is_synonymous:
             looker = mdl = "S"
         if is_nonsynonymous:
@@ -200,12 +170,16 @@ def get_interpretation_2_2_2(cds_position: int, annotation: str) -> list[str]:
         if is_nonsynonymous:
             looker = "U"
             mdl = "S"
-            
+
     return [looker, mdl]
 
+
 def get_interpretation_3_2(annotation: str) -> list[str]:
-    is_synonymous = (annotation == "synonymous_variant")
-    is_nonsynonymous = (annotation != "synonymous_variant")
+    """
+    implementation of interpretation according to 3.2
+    """
+    is_synonymous = annotation == "synonymous_variant"
+    is_nonsynonymous = annotation != "synonymous_variant"
     looker = mdl = ""
     if is_synonymous:
         looker = mdl = "S"
@@ -215,16 +189,19 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def add_drug_annotation(input: str, annotation: str):
-    tsv = pandas.read_csv(input, sep="\t")
+def add_drug_annotation(inputfile: str, annotation: str):
+    """
+    add drug annotation to variants
+    """
+    tsv = pandas.read_csv(inputfile, sep="\t")
 
-    with open(annotation,"r") as jsonfile:
+    with open(annotation, "r", encoding="utf-8") as jsonfile:
         json_annotation = json.load(jsonfile)
 
     #
     # add drug annotation from json file
     #
-    
+
     # create placeholders
     tsv["antimicrobial"] = [""] * len(tsv.index)
     tsv["confidence"] = [""] * len(tsv.index)
@@ -232,10 +209,10 @@ def add_drug_annotation(input: str, annotation: str):
     tsv["count"] = [1] * len(tsv.index)
 
     # create output dataframe
-    tsv_out = pandas.DataFrame(columns = list(tsv.columns))
+    tsv_out = pandas.DataFrame(columns=list(tsv.columns))
 
     # loop over input dataframe, fill output dataframe
-    i = 0 
+    i = 0
     for index, row in tsv.iterrows():
         position = int(row["POS"])
         gene_id = row["Gene ID"]
@@ -244,22 +221,22 @@ def add_drug_annotation(input: str, annotation: str):
         drug_annotation = []
         if gene_id in json_annotation:
             if nucleotide_change in list(json_annotation[gene_id].keys()):
-                if int(position) in json_annotation[gene_id][nucleotide_change]['genome_positions']:
-                    for index, entry in enumerate(json_annotation[gene_id][nucleotide_change]['annotations']):
-                        pair = ['', '']
-                        if 'drug' in entry:
-                            pair[0] = entry['drug']
-                        if 'who_confidence' in entry:
-                            pair[1] = entry['who_confidence']
+                if int(position) in json_annotation[gene_id][nucleotide_change]["genome_positions"]:
+                    for index, entry in enumerate(json_annotation[gene_id][nucleotide_change]["annotations"]):
+                        pair = ["", ""]
+                        if "drug" in entry:
+                            pair[0] = entry["drug"]
+                        if "who_confidence" in entry:
+                            pair[1] = entry["who_confidence"]
                         drug_annotation.append(pair)
             elif amino_acid_change in list(json_annotation[gene_id].keys()):
-                if int(position) in json_annotation[gene_id][amino_acid_change]['genome_positions']:
-                    for index, entry in enumerate(json_annotation[gene_id][amino_acid_change]['annotations']):
-                        pair = ['', '']
-                        if 'drug' in entry:
-                            pair[0] = entry['drug']
-                        if 'who_confidence' in entry:
-                            pair[1] = entry['who_confidence']
+                if int(position) in json_annotation[gene_id][amino_acid_change]["genome_positions"]:
+                    for index, entry in enumerate(json_annotation[gene_id][amino_acid_change]["annotations"]):
+                        pair = ["", ""]
+                        if "drug" in entry:
+                            pair[0] = entry["drug"]
+                        if "who_confidence" in entry:
+                            pair[1] = entry["who_confidence"]
                         drug_annotation.append(pair)
 
         if len(drug_annotation) == 0:
@@ -275,63 +252,57 @@ def add_drug_annotation(input: str, annotation: str):
                 i = i + 1
     return tsv_out
 
-    
+
 def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, minimum_coverage: int):
     """
     interpretation
     """
-    header = [ "Sample ID","Gene Name", "Gene ID", "POS", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
-    tsv_interpretation = tsv.loc[ :, header ]
-    tsv_interpretation["average_coverage_in_region"] = [0]*len(tsv_interpretation.index)
-    tsv_interpretation["percent_above_threshold"] = [0]*len(tsv_interpretation.index)
-    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100 # use %
-    tsv_interpretation["Comment"] = [""]*len(tsv_interpretation.index)
+    header = ["Sample ID", "Gene Name", "Gene ID", "POS", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
+    tsv_interpretation = tsv.loc[:, header]
+    tsv_interpretation["average_coverage_in_region"] = [0] * len(tsv_interpretation.index)
+    tsv_interpretation["percent_above_threshold"] = [0] * len(tsv_interpretation.index)
+    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100  # use %
+    tsv_interpretation["Comment"] = [""] * len(tsv_interpretation.index)
+
+    # If no antimicrobial information, take antimicrobial information for this range (gene)
+    # Note: this could be a comma separated list of chemicals
+    for index, row in tsv_interpretation.iterrows():
+        if row["antimicrobial"] == "":
+            tsv_interpretation.loc[index, "antimicrobial"] = drug_info[row["Gene Name"]] if row["Gene Name"] in drug_info else ""
 
     genes_count_dict = {}
     for index, row in tsv_interpretation.iterrows():
-             
-        if row["antimicrobial"].strip() == "":
-            # this could be a comma separated list of chemicals
-            gene = row["Gene Name"]
-            if gene in drug_info:
-                chemicals = drug_info[gene]
-            else:
-                chemicals = ""
-            tsv_interpretation.loc[index, "antimicrobial"] = chemicals
-
         if row["Gene Name"] in genes_count_dict:
-            genes_count_dict[row["Gene Name"]] = genes_count_dict[row["Gene Name"]] + 1
+            genes_count_dict[row["Gene Name"]] += 1
         else:
             genes_count_dict[row["Gene Name"]] = 1
 
         # 0. add region average coverage (depth) information
-        tsv_interpretation.loc[index, "average_coverage_in_region"] = coverage_average[row["Gene Name"]]
-        tsv_interpretation.loc[index, "percent_above_threshold"] = coverage_percentage[row["Gene Name"]]
-            
+        tsv_interpretation.loc[index, "average_coverage_in_region"] = coverage_average[row["Gene Name"]] if row["Gene Name"] in coverage_average else ""
+        tsv_interpretation.loc[index, "percent_above_threshold"] = coverage_percentage[row["Gene Name"]] if row["Gene Name"] in coverage_percentage else ""
+
         # 1.
         if row["Gene Name"] in gene_list_1:
             # 1.1
             if (row["confidence"] != "") & (row["antimicrobial"] != ""):
-                tsv_interpretation.loc[index, "looker"] = looker_1_1[ row["confidence"] ]
-                tsv_interpretation.loc[index, "mdl"] = mdl_1_1[ row["confidence"] ]
+                tsv_interpretation.loc[index, "looker"] = looker_1_1[row["confidence"]]
+                tsv_interpretation.loc[index, "mdl"] = mdl_1_1[row["confidence"]]
 
             # 1.2
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
-                looker_mdl = get_interpretation_1_2(row["Gene Name"], row["POS"], row["Position within CDS "], row["Annotation"])
+                looker_mdl = get_interpretation_1_2(row["Gene Name"], row["POS"], row["Position within CDS"], row["Annotation"])
                 tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                 tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
                 tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
-                tsv_interpretation.loc[index, "rationale"] = "expert rule"
+                tsv_interpretation.loc[index, "rationale"] = "expert rule 1.2"
 
         # 2.
         if row["Gene Name"] in gene_list_2:
             # 2.1
-            #if row["antimicrobial"] != "":
-            #    print(">>> no antimicrobial")
             if (row["confidence"] != "") & (row["antimicrobial"] != ""):
-                tsv_interpretation.loc[index, "looker"] = looker_2_2[ row["confidence"] ]
-                tsv_interpretation.loc[index, "mdl"] = mdl_2_2[ row["confidence"] ]
-            
+                tsv_interpretation.loc[index, "looker"] = looker_2_2[row["confidence"]]
+                tsv_interpretation.loc[index, "mdl"] = mdl_2_2[row["confidence"]]
+
             # 2.2 "WHO expert rules"
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
                 # 2.2.1 gene_list_2 without rpoB
@@ -340,23 +311,22 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                     tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
                     tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
-                    tsv_interpretation.loc[index, "rationale"] = "expert rule"
+                    tsv_interpretation.loc[index, "rationale"] = "expert rule 2.2.1"
 
                 # 2.2.2 just rpoB
                 if row["Gene Name"] == "rpoB":
-                    looker_mdl = get_interpretation_2_2_2(row["Annotation"])
+                    looker_mdl = get_interpretation_2_2_2(row["Position within CDS"], row["Annotation"])
                     tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                     tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
                     tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
-                    tsv_interpretation.loc[index, "rationale"] = "expert rule"
-                    
-                
+                    tsv_interpretation.loc[index, "rationale"] = "expert rule 2.2.2"
+
         # 3.
         if row["Gene Name"] not in (gene_list_1 + gene_list_2):
             # 3.1
             if (row["confidence"] != "") & (row["antimicrobial"] != ""):
-                tsv_interpretation.loc[index, "looker"] = looker_3_1[ row["confidence"] ]
-                tsv_interpretation.loc[index, "mdl"] = mdl_3_1[ row["confidence"] ]
+                tsv_interpretation.loc[index, "looker"] = looker_3_1[row["confidence"]]
+                tsv_interpretation.loc[index, "mdl"] = mdl_3_1[row["confidence"]]
 
             # 3.2
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
@@ -364,7 +334,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                 tsv_interpretation.loc[index, "looker"] = looker_mdl[0]
                 tsv_interpretation.loc[index, "mdl"] = looker_mdl[1]
                 tsv_interpretation.loc[index, "confidence"] = "no WHO annotation"
-                tsv_interpretation.loc[index, "rationale"] = "expert rule"
+                tsv_interpretation.loc[index, "rationale"] = "expert rule 3.2"
 
     # 4.
     # loop over genes of interest,
@@ -373,13 +343,13 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # manufacture default row for output dataframe
 
     # keep only genes of interest
-    tsv_interpretation = tsv_interpretation[ tsv_interpretation["Gene Name"].isin(gene_list_1 + gene_list_2) ]
+    tsv_interpretation = tsv_interpretation[tsv_interpretation["Gene Name"].isin(gene_list_1 + gene_list_2)]
 
     # fill additional rows
-    tsv_additional = pandas.DataFrame(columns = list(tsv_interpretation.columns))
+    tsv_additional = pandas.DataFrame(columns=list(tsv_interpretation.columns))
     index = 0
     for sample in tsv_interpretation["Sample ID"].unique().tolist():
-        for gene in (gene_list_1 + gene_list_2):
+        for gene in gene_list_1 + gene_list_2:
             if gene not in genes_count_dict:
                 average_coverage_in_region = coverage_average[gene]
                 percent_above_threshold = coverage_percentage[gene]
@@ -409,22 +379,21 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                         tsv_additional.loc[index, "looker"] = "Insufficient Coverage"
                         tsv_additional.loc[index, "mdl"] = "Insufficient Coverage"
                         index = index + 1
-                
+
     tsv_final = pandas.concat([tsv_interpretation, tsv_additional])
 
     return [tsv_final, genes_count_dict]
 
 
-    
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file", prog="add_drug_annotation", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=80))
+    parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file", prog="add_drug_annotation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
     parser.add_argument("--tsv", "-t", type=str, help="tsv version of annotated vcf file", required=True)
     parser.add_argument("--json", "-j", type=str, help="json file with drug annotation", required=True)
     parser.add_argument("--bed", "-b", type=str, help="bed file with regions of interest", required=True)
     parser.add_argument("--coverage", "-c", type=str, help="csv file with coverage for regions of interest", required=True)
     parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", default=0)
     parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", default=0)
-    parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)",  default=0)
+    parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", default=0)
     parser.add_argument("--output", "-o", type=str, help="tsv output file", required=True)
     parser.add_argument("--report", "-r", type=str, help="another tsv output file", required=True)
     args = parser.parse_args()
@@ -439,11 +408,11 @@ if __name__ == "__main__":
     regions.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
     get_intervals(regions)
     drug_info = dict(zip(regions.gene, regions.chemical))
-    
+
     # get coverage
     coverage = pandas.read_csv(args.coverage)
     coverage["Start"] = coverage["Start"] - 1
-    coverage.rename(columns={ "%_above_10": "percent_above_threshold"}, inplace=True)
+    coverage.rename(columns={"%_above_10": "percent_above_threshold"}, inplace=True)
     gene_coverage = pandas.merge(coverage, regions, on="Start", how="right")
     coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
     coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
