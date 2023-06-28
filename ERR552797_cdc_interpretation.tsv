@@ -1,5 +1,23 @@
 Sample ID	Gene Name	Gene ID	POS	Position within CDS	Nucleotide Change	Amino acid Change	Annotation	confidence	antimicrobial	Total Read Depth	Variant Read Depth	Percent Alt Allele	rationale	average_coverage_in_region	percent_above_threshold	Comment	looker	mdl
+ERR552797	gyrB	Rv0005	5752	513	c.513G>A	p.Val171Val	synonymous_variant	no WHO annotation	fluoroquinolones,moxifloxacin,levofloxacin,ciprofloxacin,ofloxacin	21	20	100.0	expert rule 3.2	18.31	96.6		S	S
+ERR552797	gyrB	Rv0005	6406	1167	c.1167C>T	p.Asn389Asn	synonymous_variant	no WHO annotation	fluoroquinolones,moxifloxacin,levofloxacin,ciprofloxacin,ofloxacin	17	16	100.0	expert rule 3.2	18.31	96.6		S	S
+ERR552797	gyrB	Rv0005	6446	1207	c.1207G>T	p.Ala403Ser	missense_variant	Not assoc w R	levofloxacin	18	18	100.0	WHO	18.31	96.6		S	S
+ERR552797	gyrB	Rv0005	6446	1207	c.1207G>T	p.Ala403Ser	missense_variant	Uncertain significance	moxifloxacin	18	18	100.0	WHO	18.31	96.6		U	S
+ERR552797	gyrA	Rv0006	7362	61	c.61G>C	p.Glu21Gln	missense_variant	Not assoc w R	moxifloxacin	10	8	100.0	WHO	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	7362	61	c.61G>C	p.Glu21Gln	missense_variant	Not assoc w R	levofloxacin	10	8	100.0	WHO	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	7585	284	c.284G>C	p.Ser95Thr	missense_variant	Not assoc w R	levofloxacin	13	13	100.0	WHO	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	7585	284	c.284G>C	p.Ser95Thr	missense_variant	Not assoc w R	moxifloxacin	13	13	100.0	WHO	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	7844	543	c.543C>T	p.Ile181Ile	synonymous_variant	no WHO annotation	fluoroquinolones,moxifloxacin,levofloxacin,ciprofloxacin,ofloxacin	27	27	100.0	expert rule 3.2	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	8285	984	c.984C>T	p.Ile328Ile	synonymous_variant	no WHO annotation	fluoroquinolones,moxifloxacin,levofloxacin,ciprofloxacin,ofloxacin	20	19	100.0	expert rule 3.2	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	9143	1842	c.1842T>C	p.Ile614Ile	synonymous_variant	no WHO annotation	fluoroquinolones,moxifloxacin,levofloxacin,ciprofloxacin,ofloxacin	20	20	100.0	expert rule 3.2	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	9217	1916	c.1916A>C	p.Asp639Ala	missense_variant	Uncertain significance	levofloxacin	22	21	100.0	WHO	17.49	95.2		U	S
+ERR552797	gyrA	Rv0006	9217	1916	c.1916A>C	p.Asp639Ala	missense_variant	Uncertain significance	moxifloxacin	22	21	100.0	WHO	17.49	95.2		U	S
+ERR552797	gyrA	Rv0006	9304	2003	c.2003G>A	p.Gly668Asp	missense_variant	Not assoc w R	moxifloxacin	21	21	100.0	WHO	17.49	95.2		S	S
+ERR552797	gyrA	Rv0006	9304	2003	c.2003G>A	p.Gly668Asp	missense_variant	Not assoc w R	levofloxacin	21	21	100.0	WHO	17.49	95.2		S	S
+ERR552797	Rv0007	Rv0007	10017	104	c.104G>A	p.Gly35Asp	missense_variant			10	10	100.0						
+ERR552797	fgd1	Rv0407	491742	960	c.960T>C	p.Phe320Phe	synonymous_variant	no WHO annotation	delamanid	15	14	100.0	expert rule 3.2	17.29	100.0		S	S
 ERR552797	rpoB	Rv0667	763031	3225	c.3225T>C	p.Ala1075Ala	synonymous_variant	no WHO annotation	rifampicin	17	16	100.0	expert rule 2.2.2	19.91	99.5		S	S
+ERR552797	end	Rv0670	767414	-1	c.-2378G>A		upstream_gene_variant			16	16	100.0						
 ERR552797	mmpL5	Rv0676c	775639	2842	c.2842A>G	p.Ile948Val	missense_variant	Not assoc w R	bedaquiline	17	17	100.0	WHO	18.11	93.5		S	S
 ERR552797	mmpL5	Rv0676c	775639	2842	c.2842A>G	p.Ile948Val	missense_variant	Not assoc w R	clofazimine	17	17	100.0	WHO	18.11	93.5		S	S
 ERR552797	mmpL5	Rv0676c	776100	2381	c.2381C>T	p.Thr794Ile	missense_variant	Not assoc w R	clofazimine	10	9	100.0	WHO	18.11	93.5		S	S
@@ -9,12 +27,58 @@ ERR552797	mmpS5	Rv0677c	778630	276	c.276G>C	p.Leu92Phe	missense_variant	no WHO a
 ERR552797	mmpS5	Rv0677c	778632	267	c.267_273delGCTCACC	p.Leu90fs	frameshift_variant	no WHO annotation	clofazimine,bedaquiline	33	2	6.06060606060606	expert rule 1.2	26.62	100.0		U	U
 ERR552797	mmpL5	Rv0676c	781374	-1	c.-2894G>A		upstream_gene_variant	no WHO annotation	clofazimine,bedaquiline	29	29	100.0	expert rule 1.2	18.11	93.5			
 ERR552797	mmpL5	Rv0676c	781395	-1	c.-2915A>G		upstream_gene_variant	no WHO annotation	clofazimine,bedaquiline	31	31	100.0	expert rule 1.2	18.11	93.5			
+ERR552797	Rv1167c	Rv1167c	1302899	-1	c.-4207T>C		upstream_gene_variant			23	23	100.0						
+ERR552797	fbiC	Rv1173	1305494	2565	c.2565_*55delGGCCTAGCCCCGGCGACGATGCCGGGTCGCGGGATGCGGCCCGTTGAGGAGCGGGGCAATCT	p.Ala855fs	frameshift_variant&stop_lost&splice_region_variant	no WHO annotation	delamanid	27	18	100.0	expert rule 3.2	16.73	92.4		U	S
+ERR552797	Rv1257c	Rv1257c	1405937	148	c.148A>G	p.Thr50Ala	missense_variant			2	1	100.0						
+ERR552797	Rv1313c	Rv1313c	1471659	-1	c.-2154G>A		upstream_gene_variant			20	19	100.0						
+ERR552797	Rv1313c	Rv1313c	1473471	-1	c.-3967_-3966insA		upstream_gene_variant			20	20	100.0						
+ERR552797	rpsA	Rv1630	1834859	1318	c.1318G>A	p.Ala440Thr	missense_variant	no WHO annotation	pyrazinamide	14	13	100.0	expert rule 3.2	18.25	98.2		U	S
+ERR552797	coaE	Rv1631	1835051	39	c.39G>C	p.Gly13Gly	synonymous_variant			10	10	100.0						
+ERR552797	tlyA	Rv1694	1917972	33	c.33A>G	p.Leu11Leu	synonymous_variant	no WHO annotation	capreomycin	12	12	100.0	expert rule 3.2	19.24	98.8		S	S
+ERR552797	ndh	Rv1854c	2103173	-1	c.-132delG		upstream_gene_variant	no WHO annotation	ethionamide,isoniazid	21	19	100.0	expert rule 3.2	16.81	90.8		U	S
 ERR552797	katG	Rv1908c	2154724	1388	c.1388G>T	p.Arg463Leu	missense_variant	Not assoc w R	isoniazid	18	18	100.0	WHO	18.1	99.4		S	S
 ERR552797	katG	Rv1908c	2155503	609	c.609C>T	p.Thr203Thr	synonymous_variant	no WHO annotation	isoniazid	21	21	100.0	expert rule 2.2.1	18.1	99.4		S	S
 ERR552797	katG	Rv1908c	2156025	87	c.87C>A	p.Pro29Pro	synonymous_variant	no WHO annotation	isoniazid	18	18	100.0	expert rule 2.2.1	18.1	99.4		S	S
+ERR552797	furA	Rv1909c	2156250	343	c.343G>A	p.Ala115Thr	missense_variant			22	21	100.0						
+ERR552797	PPE34	Rv1917c	2167583	-1	c.-272C>T		upstream_gene_variant			14	14	100.0						
+ERR552797	PPE35	Rv1918c	2167926	2687	c.2687T>C	p.Leu896Ser	missense_variant	Not assoc w R	pyrazinamide	11	11	100.0	WHO	16.12	87.9		S	S
+ERR552797	PPE35	Rv1918c	2168011	2602	c.2602A>C	p.Ser868Arg	missense_variant	Uncertain significance	pyrazinamide	10	10	100.0	WHO	16.12	87.9		U	S
+ERR552797	PPE35	Rv1918c	2168319	2294	c.2294C>T	p.Thr765Ile	missense_variant	Uncertain significance	pyrazinamide	16	14	100.0	WHO	16.12	87.9		U	S
+ERR552797	PPE35	Rv1918c	2168814	1798	c.1798dupA	p.Thr600fs	frameshift_variant	no WHO annotation	pyrazinamide	25	25	100.0	expert rule 3.2	16.12	87.9		U	S
+ERR552797	Rv1979c	Rv1979c	2222308	857	c.857A>G	p.Asp286Gly	missense_variant	Not assoc w R	clofazimine	27	26	100.0	WHO	18.7	98.9		S	S
+ERR552797	Rv1979c	Rv1979c	2222308	857	c.857A>G	p.Asp286Gly	missense_variant	Uncertain significance	bedaquiline	27	26	100.0	WHO	18.7	98.9		U	S
+ERR552797	Rv1976c	Rv1976c	2223293	-1	c.-4042A>G		upstream_gene_variant			14	12	100.0						
 ERR552797	pncA	Rv2043c	2289073	169	c.169C>G	p.His57Asp	missense_variant	no WHO annotation	pyrazinamide	30	30	100.0	expert rule 2.2.1	17.55	94.1		U	U
 ERR552797	pncA	Rv2043c	2289073	169	c.169C>G	p.His57Asp	missense_variant	Assoc w R	pyrazinamide	30	30	100.0	WHO	17.55	94.1		R	R
+ERR552797	kasA	Rv2245	2518132	18	c.18C>T	p.Thr6Thr	synonymous_variant	no WHO annotation	isoniazid	31	30	100.0	expert rule 3.2	16.89	75.9		S	S
+ERR552797	Rv2779c	Rv2779c	3086728	27	c.27G>A	p.Met9Ile	missense_variant			19	19	100.0						
+ERR552797	dapB	Rv2773c	3086788	-1	c.-4447A>G		upstream_gene_variant			16	16	100.0						
+ERR552797	ald	Rv2780	3087084	266	c.266delA	p.Gln89fs	frameshift_variant	no WHO annotation	cycloserine	12	12	100.0	expert rule 3.2	14.77	99.9		U	S
+ERR552797	Rv3083	Rv3083	3448783	280	c.280G>A	p.Val94Ile	missense_variant	Uncertain significance	ethionamide	19	19	100.0	WHO	15.91	96.3		U	S
+ERR552797	Rv3099c	Rv3099c	3473996	-1	c.-4733_-4732insT		upstream_gene_variant			8	7	100.0						
+ERR552797	fprA	Rv3106	3474427	421	c.421G>A	p.Val141Ile	missense_variant	Uncertain significance	capreomycin	16	16	100.0	WHO	12.73	71.0		U	S
+ERR552797	fprA	Rv3106	3474427	421	c.421G>A	p.Val141Ile	missense_variant	Uncertain significance	amikacin	16	16	100.0	WHO	12.73	71.0		U	S
+ERR552797	fprA	Rv3106	3475159	1153	c.1153A>G	p.Asn385Asp	missense_variant	Not assoc w R	amikacin	10	10	100.0	WHO	12.73	71.0		S	S
+ERR552797	fprA	Rv3106	3475159	1153	c.1153A>G	p.Asn385Asp	missense_variant	Not assoc w R	capreomycin	10	10	100.0	WHO	12.73	71.0		S	S
+ERR552797	rplQ	Rv3456c	3877421	12	c.12T>C	p.Pro4Pro	synonymous_variant			25	24	100.0						
+ERR552797	ddn	Rv3547	3986862	19	c.19C>T	p.Arg7Trp	missense_variant	no WHO annotation	delamanid	28	2	7.14285714285714	expert rule 3.2	23.82	100.0		U	S
+ERR552797	clpC1	Rv3596c	4038403	2302	c.2302T>C	p.Leu768Leu	synonymous_variant	no WHO annotation	pyrazinamide	25	25	100.0	expert rule 3.2	21.88	95.2		S	S
+ERR552797	embC	Rv3793	4240671	809	c.809C>T	p.Thr270Ile	missense_variant	Not assoc w R	ethambutol	18	18	100.0	WHO	18.53	100.0		S	S
+ERR552797	embC	Rv3793	4242643	2781	c.2781C>T	p.Arg927Arg	synonymous_variant	no WHO annotation	ethambutol	29	29	100.0	expert rule 3.2	18.53	100.0		S	S
+ERR552797	embC	Rv3793	4242970	3108	c.3108C>T	p.Thr1036Thr	synonymous_variant	no WHO annotation	ethambutol	25	24	100.0	expert rule 3.2	18.53	100.0		S	S
+ERR552797	embA	Rv3794	4244220	988	c.988C>T	p.Leu330Leu	synonymous_variant	no WHO annotation	ethambutol	8	8	100.0	expert rule 3.2	15.66	88.5		S	S
+ERR552797	embB	Rv3795	4246551	38	c.38A>G	p.Asn13Ser	missense_variant	Not assoc w R	ethambutol	10	10	100.0	WHO	17.46	91.1		S	S
+ERR552797	embB	Rv3795	4246864	351	c.351C>T	p.Val117Val	synonymous_variant	no WHO annotation	ethambutol	25	25	100.0	expert rule 3.2	17.46	91.1		S	S
+ERR552797	embB	Rv3795	4247646	1133	c.1133A>C	p.Glu378Ala	missense_variant	Not assoc w R	ethambutol	15	15	100.0	WHO	17.46	91.1		S	S
+ERR552797	embB	Rv3795	4248329	1817	c.1816_1817insACAGCCCGAAGTGGTGCACCCACTTGG	p.Met606delinsAsnSerProLysTrpCysThrHisLeuVal	disruptive_inframe_insertion	no WHO annotation	ethambutol	18	2	11.11111111111111	expert rule 3.2	17.46	91.1		U	S
+ERR552797	aftB	Rv3805c	4267858	979	c.979A>G	p.Ile327Val	missense_variant	Uncertain significance	capreomycin	12	12	100.0	WHO	16.41	94.4		U	S
+ERR552797	aftB	Rv3805c	4267858	979	c.979A>G	p.Ile327Val	missense_variant	Uncertain significance	amikacin	12	12	100.0	WHO	16.41	94.4		U	S
+ERR552797	ubiA	Rv3806c	4269351	483	c.483C>T	p.Ala161Ala	synonymous_variant	no WHO annotation	ethambutol	18	18	100.0	expert rule 3.2	16.8	94.4		S	S
+ERR552797	ubiA	Rv3806c	4269387	447	c.447A>C	p.Glu149Asp	missense_variant	Not assoc w R	ethambutol	20	20	100.0	WHO	16.8	94.4		S	S
+ERR552797	ubiA	Rv3806c	4269606	228	c.228T>C	p.Arg76Arg	synonymous_variant	no WHO annotation	ethambutol	11	10	100.0	expert rule 3.2	16.8	94.4		S	S
+ERR552797	Rv3856c	Rv3856c	4328611	798	c.798T>C	p.Arg266Arg	synonymous_variant			26	26	100.0						
 ERR552797	ethA	Rv3854c	4329782	-1	c.-2309C>T		upstream_gene_variant	no WHO annotation	ethionamide	18	18	100.0	expert rule 2.2.1	21.13	100.0		U	U
+ERR552797	gltB	Rv3859c	4338595	-1	c.-2515delG		upstream_gene_variant			17	17	100.0						
 ERR552797	gid	Rv3919c	4407588	615	c.615A>G	p.Ala205Ala	synonymous_variant	no WHO annotation	streptomycin	25	24	100.0	expert rule 2.2.1	22.74	100.0		S	S
 ERR552797	mmpR5	N/A	N/A	N/A	N/A	N/A	N/A	N/A	clofazimine	N/A	N/A	N/A	WT	19.17	100.0	N/A	S	WT
 ERR552797	mmpR5	N/A	N/A	N/A	N/A	N/A	N/A	N/A	bedaquiline	N/A	N/A	N/A	WT	19.17	100.0	N/A	S	WT
