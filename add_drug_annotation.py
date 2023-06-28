@@ -253,7 +253,7 @@ def add_drug_annotation(inputfile: str, annotation: str):
     return tsv_out
 
 
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, minimum_coverage: int):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, minimum_coverage: int, all_genes: bool):
     """
     interpretation
     """
@@ -343,7 +343,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # manufacture default row for output dataframe
 
     # keep only genes of interest
-    tsv_interpretation = tsv_interpretation[tsv_interpretation["Gene Name"].isin(gene_list_1 + gene_list_2)]
+    if not all_genes:
+        tsv_interpretation = tsv_interpretation[tsv_interpretation["Gene Name"].isin(gene_list_1 + gene_list_2)]
 
     # fill additional rows
     tsv_additional = pandas.DataFrame(columns=list(tsv_interpretation.columns))
@@ -396,6 +397,7 @@ if __name__ == "__main__":
     parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", default=0)
     parser.add_argument("--output", "-o", type=str, help="tsv output file", required=True)
     parser.add_argument("--report", "-r", type=str, help="another tsv output file", required=True)
+    parser.add_argument("--all_genes", "-a", action="store_true", help="output results for all genes, not only genes of interest")
     args = parser.parse_args()
 
     # get drug annotation
@@ -418,5 +420,5 @@ if __name__ == "__main__":
     coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
 
     # get interpretation
-    tsv_final, genes_count_dict = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, args.minimum_coverage)
+    tsv_final, genes_count_dict = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, args.minimum_coverage, args.all_genes)
     tsv_final.to_csv(args.report, index=False, sep="\t")
