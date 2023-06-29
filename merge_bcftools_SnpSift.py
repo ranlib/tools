@@ -10,7 +10,7 @@ parser.add_argument("--output", "-o", type=str, help="tsv output file", required
 args = parser.parse_args()
 
 bcftools = os.path.basename(args.vcf) + ".bcftools"
-command = f'bcftools query -f "[%CHROM\t%POS\t%AD\t%DP\t%AF]\n" {args.vcf} > {bcftools}'
+command = f'bcftools query -f "[%CHROM\t%POS\t%AD\t%DP\t%AF]\n" --output {bcftools} {args.vcf} '
 os.system(command)
 
 #sed -i 's|,|\t|g' ERR552797_DR_loci_raw_annotation_bcftools.tsv
