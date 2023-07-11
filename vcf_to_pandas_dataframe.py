@@ -9,7 +9,13 @@ import pandas
 
 
 def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame:
-    """parse vcf file"""
+    """
+    parse vcf file
+
+    :param str vcf_file: filename of vcf file
+    :param str sample_name: name of sample
+    :return: pandas data frame
+    """
 
     # open vcf file
     with open(vcf_file, "r", encoding="ascii") as vcf_file_handle:
