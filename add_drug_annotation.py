@@ -189,9 +189,13 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def add_drug_annotation(inputfile: str, annotation: str):
+def add_drug_annotation(inputfile: str, annotation: str) -> pandas.Dataframe:
     """
     add drug annotation to variants
+    
+    :param str inputfile: filename of vcf file in tsv format
+    :param str annotatio: filename of json file wit drug annotation
+    :return: pandas dataframe of input tsv file with drug annotation
     """
     tsv = pandas.read_csv(inputfile, sep="\t")
 
