@@ -6,7 +6,9 @@ import argparse
 import json
 import pandas
 from sympy import Interval
-import vcf_to_pandas_dataframe
+from vcf_to_pandas_dataframe import vcf_to_pandas_dataframe
+from coverage import calculate_average_depth
+import io
 
 def get_intervals(regions: pandas.DataFrame):
     """
@@ -19,30 +21,30 @@ def get_intervals(regions: pandas.DataFrame):
 
     for index, row in regions.iterrows():
         if row["gene"] == "mmpR5":
-            mmpR5 = Interval(row["Start"], row["Stop"])
-            mmpR5_promoter = Interval(row["Start"] - 84, row["Stop"] - 1)
+            mmpR5 = Interval(row["start"], row["stop"])
+            mmpR5_promoter = Interval(row["start"] - 84, row["stop"] - 1)
 
         if row["gene"] == "atpE":
-            atpE = Interval(row["Start"], row["Stop"])
-            atpE_promoter = Interval(row["Start"] - 48, row["Stop"] - 1)
+            atpE = Interval(row["start"], row["stop"])
+            atpE_promoter = Interval(row["start"] - 48, row["stop"] - 1)
 
         if row["gene"] == "pepQ":
-            pepQ = Interval(row["Start"], row["Stop"])
-            pepQ_promoter = Interval(row["Start"] - 33, row["Stop"] - 1)
+            pepQ = Interval(row["start"], row["stop"])
+            pepQ_promoter = Interval(row["start"] - 33, row["stop"] - 1)
 
         if row["gene"] == "rplC":
-            rplC = Interval(row["Start"], row["Stop"])
-            rplC_promoter = Interval(row["Start"] - 18, row["Stop"] - 1)
+            rplC = Interval(row["start"], row["stop"])
+            rplC_promoter = Interval(row["start"] - 18, row["stop"] - 1)
 
         if row["gene"] == "mmpL5":
-            mmpL5 = Interval(row["Start"], row["Stop"])
+            mmpL5 = Interval(row["start"], row["stop"])
 
         if row["gene"] == "mmpS5":
-            mmpS5 = Interval(row["Start"], row["Stop"])
+            mmpS5 = Interval(row["start"], row["stop"])
 
         if row["gene"] == "rrl":
-            rrl = Interval(row["Start"], row["Stop"])
-            rrl_rRNA = Interval(1, row["Stop"] - row["Start"])
+            rrl = Interval(row["start"], row["stop"])
+            rrl_rRNA = Interval(1, row["stop"] - row["start"])
             # position in CDS
             rrl_rRNA_1 = Interval(2003, 2367).union(Interval(2449, 3056))
             # not in [2003, 2367] and not in [2449, 3056]
@@ -189,7 +191,7 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def add_drug_annotation(inputfile: str, annotation: str) -> pandas.Dataframe:
+def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFrame:
     """
     add drug annotation to variants
     
@@ -197,8 +199,6 @@ def add_drug_annotation(inputfile: str, annotation: str) -> pandas.Dataframe:
     :param str annotatio: filename of json file wit drug annotation
     :return: pandas dataframe of input tsv file with drug annotation
     """
-    tsv = pandas.read_csv(inputfile, sep="\t")
-
     with open(annotation, "r", encoding="utf-8") as jsonfile:
         json_annotation = json.load(jsonfile)
 
@@ -265,7 +265,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_interpretation = tsv.loc[:, header]
     tsv_interpretation["average_coverage_in_region"] = [0] * len(tsv_interpretation.index)
     tsv_interpretation["percent_above_threshold"] = [0] * len(tsv_interpretation.index)
-    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100  # use %
+    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"]
     tsv_interpretation["Comment"] = [""] * len(tsv_interpretation.index)
 
     # If no antimicrobial information, take antimicrobial information for this range (gene)
@@ -391,35 +391,38 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file", prog="add_drug_annotation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
-    parser.add_argument("--tsv", "-t", type=str, help="tsv version of annotated vcf file", required=True)
+    parser = argparse.ArgumentParser(description="variant interpretation",
+                                     prog="variant_interpretation",
+                                     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=100))
+    parser.add_argument("--vcf", "-v", type=str, help="annotated vcf file", required=True)
+    parser.add_argument("--bam", "-b", type=str, help="annotated vcf file", required=True)
+    parser.add_argument("--bed", "-i", type=str, help="bed file with regions of interest", required=True)
     parser.add_argument("--json", "-j", type=str, help="json file with drug annotation", required=True)
-    parser.add_argument("--bed", "-b", type=str, help="bed file with regions of interest", required=True)
-    parser.add_argument("--coverage", "-c", type=str, help="csv file with coverage for regions of interest", required=True)
+    parser.add_argument("--sample_name", "-s", type=str, dest = "sample_name", help="sample name", required=True)
     parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", default=0)
     parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", default=0)
     parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", default=0)
-    parser.add_argument("--output", "-o", type=str, help="tsv output file", required=True)
     parser.add_argument("--report", "-r", type=str, help="another tsv output file", required=True)
     parser.add_argument("--all_genes", "-a", action="store_true", help="output results for all genes, not only genes of interest")
     args = parser.parse_args()
 
+    # vcf -> tsv
+    vcf_df = vcf_to_pandas_dataframe(args.vcf, args.sample_name)
+    
     # get drug annotation
-    tsv_out = add_drug_annotation(args.tsv, args.json)
-    tsv_out.to_csv(args.output, index=False, sep="\t")
+    tsv_out = add_drug_annotation(vcf_df, args.json)
+    #tsv_out.to_csv(args.output, index=False, sep="\t")
 
     # get intervals
-    # get drug information
+    # get drug information for region
     regions = pandas.read_csv(args.bed, header=None, sep="\t")
-    regions.columns = ["genome", "Start", "Stop", "locus", "gene", "chemical"]
+    regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
     get_intervals(regions)
     drug_info = dict(zip(regions.gene, regions.chemical))
 
     # get coverage
-    coverage = pandas.read_csv(args.coverage)
-    coverage["Start"] = coverage["Start"] - 1
-    coverage.rename(columns={"%_above_10": "percent_above_threshold"}, inplace=True)
-    gene_coverage = pandas.merge(coverage, regions, on="Start", how="right")
+    coverage = calculate_average_depth(args.bam, args.bed, args.minimum_coverage)
+    gene_coverage = pandas.merge(coverage, regions, on="start", how="right")
     coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
     coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
 
