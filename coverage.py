@@ -5,6 +5,8 @@ get % region covered above threshold
 """
 import pysam
 import pandas
+import pathlib
+import argparse
 
 def calculate_average_depth(bam_file: str, bed_file: str , minimal_coverage: int) -> pandas.DataFrame:
     """
@@ -54,16 +56,19 @@ def calculate_average_depth(bam_file: str, bed_file: str , minimal_coverage: int
             coverage_percentages_1.append(coverage_percentage_1)
 
         d["total_coverage"] = total_depths
-        d["average_coverage"] = average_depths
-        d["percentage >= 1"] = coverage_percentages_1
-        d["percentage >= threshold"] = coverage_percentages
+        d["average_coverage"] = [ round(i,2) for i in average_depths ]
+        d["%_above_1"] = [  round(i,2) for i in coverage_percentages_1 ]
+        d["percent_above_threshold"] = [ round(i,2) for i in coverage_percentages ]
 
     return d
 
 if __name__ == "__main__":
-    # Usage example
-    bam_file_path = "/home/dieterbest/Analysis/varpipe4/tests/ERR552797/ERR552797_sdrcsm.bam"
-    bed_file_path = "/home/dieterbest/Analysis/varpipe4/intervals/tbdb.bed"
-    minimal_coverage = 10 
-    d = calculate_average_depth(bam_file_path, bed_file_path, minimal_coverage)
-    d.to_csv("coverage.tsv", index=False, sep="\t")
+    parser = argparse.ArgumentParser(description="calculate depth of coverage", prog="coverage", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
+    parser.add_argument("--bam", "-b", type=pathlib.Path, help="bam file", required=True)
+    parser.add_argument("--bed", "-i", type=pathlib.Path, help="intervals bed file", required=True)
+    parser.add_argument("--minimum_coverage", "-m", type=int, help="minimum coverage", required=True)
+    parser.add_argument("--tsv", "-t", type=str, help="output tsv file", required=True)
+    args = parser.parse_args()
+
+    d = calculate_average_depth(args.bam, args.bed, args.minimum_coverage)
+    d.to_csv(args.tsv, index=False, sep="\t")
