@@ -66,8 +66,15 @@ g = output + ".sample_interval_summary"
 df = pandas.read_csv(g)
 d["%_above_10"] = df.iloc[:, -1]
 
+
+d["Start"] = d["Start"].astype(int)
+d["Stop"] = d["Stop"].astype(int)
+
+d["Start"] = d["Start"] - 1
+d.rename(columns={"%_above_10": "percent_above_threshold", "Start": "start", "Stop": "stop", "Target": "genome"}, inplace=True)
+
 # write to file
-d.to_csv(args.csv, index=False)
+d.to_csv(args.csv, index=False, sep="\t")
 
 # clean up
 shutil.rmtree(args.output)
