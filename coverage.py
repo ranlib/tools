@@ -46,13 +46,13 @@ def calculate_average_depth(bam_file: str, bed_file: str , minimal_coverage: int
 
             total_depths.append(total_depth)
                 
-            average_depth = total_depth / total_bases
+            average_depth = total_depth / total_bases if total_bases > 0 else 0
             average_depths.append(average_depth)
 
-            coverage_percentage = (covered_bases / total_bases) * 100
+            coverage_percentage = (covered_bases / total_bases) * 100 if total_bases > 0 else 0
             coverage_percentages.append(coverage_percentage)
 
-            coverage_percentage_1 = (covered_bases_1 / total_bases) * 100
+            coverage_percentage_1 = (covered_bases_1 / total_bases) * 100 if total_bases > 0 else 0
             coverage_percentages_1.append(coverage_percentage_1)
 
         d["total_coverage"] = total_depths
