@@ -189,7 +189,7 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def add_drug_annotation(inputfile: str, annotation: str) -> pandas.Dataframe:
+def add_drug_annotation(inputfile: str, annotation: str) -> pandas.DataFrame:
     """
     add drug annotation to variants
     
@@ -265,7 +265,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_interpretation = tsv.loc[:, header]
     tsv_interpretation["average_coverage_in_region"] = [0] * len(tsv_interpretation.index)
     tsv_interpretation["percent_above_threshold"] = [0] * len(tsv_interpretation.index)
-    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"] * 100  # use %
+    tsv_interpretation["Percent Alt Allele"] = tsv_interpretation["Percent Alt Allele"]
     tsv_interpretation["Comment"] = [""] * len(tsv_interpretation.index)
 
     # If no antimicrobial information, take antimicrobial information for this range (gene)
