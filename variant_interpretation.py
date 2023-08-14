@@ -282,8 +282,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
             genes_count_dict[row["Gene Name"]] = 1
 
         # 0. add region average coverage (depth) information
-        tsv_interpretation.loc[index, "average_coverage_in_region"] = coverage_average[row["Gene Name"]] if row["Gene Name"] in coverage_average else ""
-        tsv_interpretation.loc[index, "percent_above_threshold"] = coverage_percentage[row["Gene Name"]] if row["Gene Name"] in coverage_percentage else ""
+        tsv_interpretation.loc[index, "average_coverage_in_region"] = coverage_average[row["Gene Name"]] if row["Gene Name"] in coverage_average else -1
+        tsv_interpretation.loc[index, "percent_above_threshold"] = coverage_percentage[row["Gene Name"]] if row["Gene Name"] in coverage_percentage else -1
 
         # 1.
         if row["Gene Name"] in gene_list_1:
@@ -350,42 +350,46 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     if not all_genes:
         tsv_interpretation = tsv_interpretation[tsv_interpretation["Gene Name"].isin(gene_list_1 + gene_list_2)]
 
-    # fill additional rows
+    # manufacture default rows for genes with no mutations and add them
     tsv_additional = pandas.DataFrame(columns=list(tsv_interpretation.columns))
     index = 0
     for sample in tsv_interpretation["Sample ID"].unique().tolist():
         for gene in gene_list_1 + gene_list_2:
             if gene not in genes_count_dict:
-                average_coverage_in_region = coverage_average[gene]
-                percent_above_threshold = coverage_percentage[gene]
+                average_coverage_in_region = coverage_average[gene] if gene in coverage_average else -1
+                percent_above_threshold = coverage_percentage[gene] if gene in coverage_average else -1
                 if average_coverage_in_region > minimum_coverage:
                     # 4.1 there is coverage
-                    for drug in drug_info[gene].split(","):
-                        tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
-                        tsv_additional.loc[index, "Sample ID"] = sample
-                        tsv_additional.loc[index, "Gene Name"] = gene
-                        tsv_additional.loc[index, "rationale"] = "WT"
-                        tsv_additional.loc[index, "antimicrobial"] = drug
-                        tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
-                        tsv_additional.loc[index, "percent_above_threshold"] = percent_above_threshold
-                        tsv_additional.loc[index, "looker"] = "S"
-                        tsv_additional.loc[index, "mdl"] = "WT"
-                        index = index + 1
+                    #for drug in drug_info[gene].split(","):
+                    tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
+                    tsv_additional.loc[index, "Sample ID"] = sample
+                    tsv_additional.loc[index, "Gene Name"] = gene
+                    tsv_additional.loc[index, "rationale"] = "WT"
+                    #tsv_additional.loc[index, "antimicrobial"] = drug
+                    tsv_additional.loc[index, "antimicrobial"] =  drug_info[gene] if gene in drug_info else ""
+                    tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
+                    tsv_additional.loc[index, "percent_above_threshold"] = percent_above_threshold
+                    tsv_additional.loc[index, "looker"] = "S"
+                    tsv_additional.loc[index, "mdl"] = "WT"
+                    index = index + 1
                 else:
                     # 4.2 there is not enough coverage
-                    for drug in drug_info[gene].split(","):
-                        tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
-                        tsv_additional.loc[index, "Sample ID"] = sample
-                        tsv_additional.loc[index, "Gene Name"] = gene
-                        tsv_additional.loc[index, "rationale"] = "Insufficient Coverage"
-                        tsv_additional.loc[index, "antimicrobial"] = drug
-                        tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
-                        tsv_additional.loc[index, "percent_above_threshold"] = percent_above_threshold
-                        tsv_additional.loc[index, "looker"] = "Insufficient Coverage"
-                        tsv_additional.loc[index, "mdl"] = "Insufficient Coverage"
-                        index = index + 1
+                    #for drug in drug_info[gene].split(","):
+                    tsv_additional.loc[index, tsv_additional.columns] = ["N/A"] * len(tsv_additional.columns)
+                    tsv_additional.loc[index, "Sample ID"] = sample
+                    tsv_additional.loc[index, "Gene Name"] = gene
+                    tsv_additional.loc[index, "rationale"] = "Insufficient Coverage"
+                    #tsv_additional.loc[index, "antimicrobial"] = drug
+                    tsv_additional.loc[index, "antimicrobial"] = drug_info[gene] if gene in drug_info else ""
+                    tsv_additional.loc[index, "average_coverage_in_region"] = average_coverage_in_region
+                    tsv_additional.loc[index, "percent_above_threshold"] = percent_above_threshold
+                    tsv_additional.loc[index, "looker"] = "Insufficient Coverage"
+                    tsv_additional.loc[index, "mdl"] = "Insufficient Coverage"
+                    index = index + 1
 
     tsv_final = pandas.concat([tsv_interpretation, tsv_additional])
+    # break up rows with "," separated list of anti_microbials into several rows
+    tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(',')).explode("antimicrobial")
 
     return [tsv_final, genes_count_dict]
 
@@ -417,6 +421,8 @@ if __name__ == "__main__":
     # get drug information for region
     regions = pandas.read_csv(args.bed, header=None, sep="\t")
     regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
+    print(regions)
+    regions["chemical"] = regions["chemical"].astype("str")
     get_intervals(regions)
     drug_info = dict(zip(regions.gene, regions.chemical))
 
@@ -425,7 +431,8 @@ if __name__ == "__main__":
     gene_coverage = pandas.merge(coverage, regions, on="start", how="right")
     coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
     coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
-
+    print(coverage_average)
+    
     # get interpretation
     tsv_final, genes_count_dict = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, args.minimum_coverage, args.all_genes)
     tsv_final.to_csv(args.report, index=False, sep="\t")
