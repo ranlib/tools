@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import argparse
 import pathlib
 import pandas
@@ -15,43 +16,68 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     d = pandas.read_excel(args.excel)
-    cols = [ "final_annotation.Reference",
-             "final_annotation.Position",
-             "final_annotation.ReferenceNucleotide",
-             "final_annotation.AlternativeNucleotide",
-             "final_annotation.Gene",
-             "final_annotation.Effect"]
-    di = d[cols].sort_values("final_annotation.Position")
+    cols_input = [ "final_annotation.Reference",
+                   "final_annotation.Position",
+                   "final_annotation.ReferenceNucleotide",
+                   "final_annotation.AlternativeNucleotide",
+                   "final_annotation.Gene",
+                   "final_annotation.Effect"]
+    di = d[cols_input].sort_values("final_annotation.Position")
     #print(di)
 
     with open(args.fasta, encoding="ascii") as handle:
         record = SeqIO.read(handle, "fasta")
 
-    cols = ["position",
-            "true_ref",
-            "ref",
-            "alt",
-            "len_ref",
-            "len_alt",
-            "len_seq",
-            "len_new_seq",
-            "agree"]
-    do = pandas.DataFrame(columns = cols)
+    cols_output = ["position",
+                   "true_ref",
+                   "ref",
+                   "alt",
+                   "len_ref",
+                   "len_alt",
+                   "len_seq",
+                   "len_new_seq",
+                   "agree"]
+    do = pandas.DataFrame(columns = cols_output)
     counters = {"SNP": 0 , "MNP": 0, "Insertion": 0, "Deletion": 0}
     for index, row in di.iterrows():
         sequence = str(record.seq)
         pos = row["final_annotation.Position"]
         ref = row["final_annotation.ReferenceNucleotide"].upper()
         alt = row["final_annotation.AlternativeNucleotide"].upper()
-        true_ref = sequence[pos-1]
+
+        if len(ref) > 1 and len(alt) > 1:
+            print(pos,ref,alt)
+            
+            # remove common suffix
+            p = [ref[::-1], alt[::-1]]
+            commonprefix = os.path.commonprefix(p)
+            [new_ref, new_alt] = [ x[len(commonprefix):] for x in p ]
+            ref = new_ref[::-1]
+            alt = new_alt[::-1]
+            print(pos,ref,alt)
+                    
+            # remove common prefix
+            p = [ref, alt]
+            commonprefix = os.path.commonprefix(p)
+            [new_ref, new_alt] = [ x[len(commonprefix)-1:] for x in p ]
+            ref = new_ref
+            alt = new_alt
+            pos = pos + len(commonprefix) - 1
+            print(pos,ref,alt)
+            
+        #true_ref = sequence[pos-1]
+        true_ref = sequence[pos-1: pos+len(ref)-1]
         #print(pos, seq[pos], ref, alt)
         do.loc[index, "position"] = pos
         do.loc[index, "true_ref"] = true_ref
+        #do.loc[index, "ref"] = ref
+        #do.loc[index, "alt"] = alt
         do.loc[index, "ref"] = ref
         do.loc[index, "alt"] = alt
         do.loc[index, "len_ref"] = len(ref)
         do.loc[index, "len_alt"] = len(alt)
-        do.loc[index, "agree"] = true_ref == list(ref)[0]
+        #do.loc[index, "agree"] = true_ref == list(ref)[0]
+        do.loc[index, "agree"] = true_ref == ref
         if len(ref) == len(alt):
             if len(ref) == 1:
                 counters["SNP"] += 1
