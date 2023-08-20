@@ -20,10 +20,17 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
     vcf_reader = vcf.Reader(filename=vcf_file)
 
     # get annotation terms from header
-    annotation = vcf_reader.infos["ANN"].desc
-    _, terms = re.split(r":[ ]+", annotation)
-    ann_keys = terms.replace("'", "").split(" | ")
-
+    if "ANN" in vcf_reader.infos:
+        annotation = vcf_reader.infos["ANN"].desc
+        _, terms = re.split(r":[ ]+", annotation)
+        ann_keys = terms.replace("'", "").split(" | ")
+    else:
+        print(f"<W> vcf_to_pandas_dataframe: no mutations in {vcf_file}, return empty dataframe")
+        df = pandas.DataFrame()
+        print(df)
+        print(len(df.index))
+        return df
+        
     # loop over records
     ANNS = []
     for record in vcf_reader:
