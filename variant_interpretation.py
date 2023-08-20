@@ -458,28 +458,30 @@ if __name__ == "__main__":
 
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf, args.sample_name)
-    
-    # get drug annotation
-    tsv_out = add_drug_annotation(vcf_df, args.json)
-    #tsv_out.to_csv(args.output, index=False, sep="\t")
+    if len(vcf_df.index) == 0:
+        print(f"<W> variant_interpreation: no mutations in {args.vcf}, no interpretation report.")
+    else:
+        # get drug annotation
+        tsv_out = add_drug_annotation(vcf_df, args.json)
+        #tsv_out.to_csv(args.output, index=False, sep="\t")
 
-    # get intervals
-    # get drug information for region
-    regions = pandas.read_csv(args.bed, header=None, sep="\t")
-    regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
-    #print(regions)
-    regions["chemical"] = regions["chemical"].astype("str")
-    get_intervals(regions)
-    drug_info = dict(zip(regions.gene, regions.chemical))
+        # get intervals
+        # get drug information for region
+        regions = pandas.read_csv(args.bed, header=None, sep="\t")
+        regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
+        #print(regions)
+        regions["chemical"] = regions["chemical"].astype("str")
+        get_intervals(regions)
+        drug_info = dict(zip(regions.gene, regions.chemical))
     
-    # get coverage
-    coverage = calculate_average_depth(args.bam, args.bed, args.minimum_coverage)
-    gene_coverage = pandas.merge(coverage, regions, on="start", how="right")
-    coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
-    coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
-    #print(coverage_average)
-    gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
+        # get coverage
+        coverage = calculate_average_depth(args.bam, args.bed, args.minimum_coverage)
+        gene_coverage = pandas.merge(coverage, regions, on="start", how="right")
+        coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
+        coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
+        #print(coverage_average)
+        #gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
     
-    # get interpretation
-    tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, args.minimum_coverage, args.filter_genes, args.verbose)
-    tsv_final.to_csv(args.report, index=False, sep="\t")
+        # get interpretation
+        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, args.minimum_coverage, args.filter_genes, args.verbose)
+        tsv_final.to_csv(args.report, index=False, sep="\t")
