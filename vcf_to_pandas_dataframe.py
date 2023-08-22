@@ -20,6 +20,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
     vcf_reader = vcf.Reader(filename=vcf_file)
 
     # get annotation terms from header
+    # check there are mutations in input vcf file
     if "ANN" in vcf_reader.infos:
         annotation = vcf_reader.infos["ANN"].desc
         _, terms = re.split(r":[ ]+", annotation)
@@ -44,6 +45,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
         #vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
         vcf_item["FILTER"] = "." if not record.FILTER else record.FILTER
         info = record.INFO
+        vcf_item["NANN"] = len(info["ANN"])
         item = info["ANN"][0]
         ann_item = dict(zip(ann_keys, item.split("|")))
         cDNA = ann_item["cDNA.pos / cDNA.length"].split("/")
