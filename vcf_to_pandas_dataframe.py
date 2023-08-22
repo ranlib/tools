@@ -42,7 +42,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
         vcf_item["REF"] = record.REF
         vcf_item["ALT"] = ','.join([ str(n) for n in record.ALT ])
         #vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
-        vcf_item["FILTER"] = "." if not record.FILTER else record.FILTER
+        vcf_item["FILTER"] = "." if not record.FILTER else ";".join(record.FILTER)
         info = record.INFO
         item = info["ANN"][0]
         ann_item = dict(zip(ann_keys, item.split("|")))
