@@ -9,16 +9,37 @@ import pandas
 import argparse
 from collections import OrderedDict
 
-def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame:
+def select_variant(info_ann: [], genes_of_interest: []) -> []:
+    variants = []
+    print(len(info_ann))
+    for gene in genes_of_interest:
+        #print(gene)
+        #print(info_ann)
+        indices = [index for index, content in enumerate(info_ann) if gene in content]
+        if len(indices) > 0:
+            print(gene)
+            variants.extend([info_ann[i] for i in indices])
+            
+
+    print(variants)
+    print(len(variants))
+    return variants
+
+def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str, bed_file: str) -> pandas.DataFrame:
     """
     parse vcf file
 
     :param str vcf_file: filename of vcf file
     :param str sample_name: name of sample
+    :param str bed_file: tab separated ascii file with 6 columns ["genome", "start", "stop", "locus", "gene", "chemical"]
     :return: pandas data frame
     """
     vcf_reader = vcf.Reader(filename=vcf_file)
-
+    
+    regions = pandas.read_csv(bed_file, header=None, sep="\t")
+    regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
+    genes = regions["gene"]
+    
     # get annotation terms from header
     if "ANN" in vcf_reader.infos:
         annotation = vcf_reader.infos["ANN"].desc
@@ -43,7 +64,11 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
         vcf_item["ALT"] = ','.join([ str(n) for n in record.ALT ])
         #vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
         vcf_item["FILTER"] = "." if not record.FILTER else ";".join(record.FILTER)
+
+        print(sample_name, record.CHROM, record.POS, record.REF, record.ALT)
+        
         info = record.INFO
+        selected_variant = select_variant(info["ANN"], genes)
         item = info["ANN"][0]
         ann_item = dict(zip(ann_keys, item.split("|")))
         cDNA = ann_item["cDNA.pos / cDNA.length"].split("/")
@@ -94,7 +119,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
         ann_item['Nucleotide Change'] = ann_item.pop("HGVS.c")
         ann_item['Amino acid Change'] = ann_item.pop("HGVS.p")
         ann_item['Position within CDS'] = ann_item.pop("CDS.pos")
-
+ 
         ANNS.append(vcf_item | ann_item)
 
     df = pandas.DataFrame(ANNS)
@@ -104,9 +129,10 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str) -> pandas.DataFrame
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file", prog="add_drug_annotation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
     parser.add_argument("--vcf", "-v", type=str, dest = "vcf_file", help="annotated vcf file", required=True)
+    parser.add_argument("--bed", "-i", type=str, help="bed file with regions of interest", required=True)
     parser.add_argument("--sample_name", "-s", type=str, dest = "sample_name", help="sample name", required=True)
     parser.add_argument("--tsv", "-t", type=str, dest = "output_tsv", help="output tsv file", required=True)
     args = parser.parse_args()
 
-    df = vcf_to_pandas_dataframe(args.vcf_file, args.sample_name)
+    df = vcf_to_pandas_dataframe(args.vcf_file, args.sample_name, args.bed)
     df.to_csv(args.output_tsv, sep="\t", index=False)
