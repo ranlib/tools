@@ -229,6 +229,19 @@ def get_interpretation_3_2(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
+def get_interpretation_3_2_1(position: int) -> list[str]:
+    """
+    implementation of interpretation for rrs gene according to 3.2.2
+    :param int position: genomic position in NC_000962.3
+    :return: list with 2 strings
+    """
+    if position in [ 1473246, 1473247, 1473329 ]:
+        looker = mdl = "U"
+    else:
+        looker = "U"
+        mdl = "S"
+
+
 def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFrame:
     """
     add drug annotation to variants
@@ -372,11 +385,20 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
             # 3.2
             if (row["confidence"] == "") & (row["antimicrobial"] != ""):
-                looker, mdl = get_interpretation_3_2(row["Annotation"])
-                tsv_mutations.loc[index, "looker"] = looker
-                tsv_mutations.loc[index, "mdl"] = mdl
-                tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
-                tsv_mutations.loc[index, "rationale"] = "expert rule 3.2"
+                # 3.2.1, just rrs
+                if row["Gene Name"] == "rrs":
+                    looker, mdl = get_interpretation_3_2_1(row["POS"])
+                    tsv_mutations.loc[index, "looker"] = looker
+                    tsv_mutations.loc[index, "mdl"] = mdl
+                    tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.1"
+                else:
+                    # 3.2.2
+                    looker, mdl = get_interpretation_3_2(row["Annotation"])
+                    tsv_mutations.loc[index, "looker"] = looker
+                    tsv_mutations.loc[index, "mdl"] = mdl
+                    tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2"
 
     # 4.
     # loop over genes of interest,
@@ -406,28 +428,50 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                 if average_coverage_in_region > minimum_coverage:
                     # 4.1 there is coverage
                     #for drug in drug_info[gene].split(","):
-                    tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
+                    #tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
                     tsv_no_mutations.loc[index, "Sample ID"] = sample
                     tsv_no_mutations.loc[index, "Gene Name"] = gene
+                    tsv_no_mutations.loc[index, "Gene ID"] = "."
+                    tsv_no_mutations.loc[index, "POS"] = -1
+                    tsv_no_mutations.loc[index, "Position within CDS"] = -1
+                    tsv_no_mutations.loc[index, "Nucleotide Change"] = "."
+                    tsv_no_mutations.loc[index, "Amino acid Change"] = "."
+                    tsv_no_mutations.loc[index, "Annotation"] = "."
+                    tsv_no_mutations.loc[index, "confidence"] = "."
+                    tsv_no_mutations.loc[index, "Total Read Depth"] = -1
+                    tsv_no_mutations.loc[index, "Variant Read Depth"] = -1
+                    tsv_no_mutations.loc[index, "Percent Alt Allele"] = -1.0
                     tsv_no_mutations.loc[index, "rationale"] = "WT"
                     #tsv_no_mutations.loc[index, "antimicrobial"] = drug
                     tsv_no_mutations.loc[index, "antimicrobial"] =  drug_info[gene] if gene in drug_info else ""
                     tsv_no_mutations.loc[index, "average_coverage_in_region"] = average_coverage_in_region
                     tsv_no_mutations.loc[index, "percent_above_threshold"] = percent_above_threshold
+                    tsv_no_mutations.loc[index, "Comment"] = "."
                     tsv_no_mutations.loc[index, "looker"] = "S"
                     tsv_no_mutations.loc[index, "mdl"] = "WT"
                     index = index + 1
                 else:
                     # 4.2 there is not enough coverage
                     #for drug in drug_info[gene].split(","):
-                    tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
+                    #tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
                     tsv_no_mutations.loc[index, "Sample ID"] = sample
                     tsv_no_mutations.loc[index, "Gene Name"] = gene
+                    tsv_no_mutations.loc[index, "Gene ID"] = "."
+                    tsv_no_mutations.loc[index, "POS"] = -1
+                    tsv_no_mutations.loc[index, "Position within CDS"] = -1
+                    tsv_no_mutations.loc[index, "Nucleotide Change"] = "."
+                    tsv_no_mutations.loc[index, "Amino acid Change"] = "."
+                    tsv_no_mutations.loc[index, "Annotation"] = "."
+                    tsv_no_mutations.loc[index, "confidence"] = "."
+                    tsv_no_mutations.loc[index, "Total Read Depth"] = -1
+                    tsv_no_mutations.loc[index, "Variant Read Depth"] = -1
+                    tsv_no_mutations.loc[index, "Percent Alt Allele"] = -1.0
                     tsv_no_mutations.loc[index, "rationale"] = "Insufficient Coverage"
                     #tsv_no_mutations.loc[index, "antimicrobial"] = drug
                     tsv_no_mutations.loc[index, "antimicrobial"] = drug_info[gene] if gene in drug_info else ""
                     tsv_no_mutations.loc[index, "average_coverage_in_region"] = average_coverage_in_region
                     tsv_no_mutations.loc[index, "percent_above_threshold"] = percent_above_threshold
+                    tsv_no_mutations.loc[index, "Comment"] = "."
                     tsv_no_mutations.loc[index, "looker"] = "Insufficient Coverage"
                     tsv_no_mutations.loc[index, "mdl"] = "Insufficient Coverage"
                     index = index + 1
@@ -457,7 +501,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # vcf -> tsv
-    vcf_df = vcf_to_pandas_dataframe(args.vcf, args.sample_name)
+    vcf_df = vcf_to_pandas_dataframe(args.vcf, args.sample_name, args.bed)
     #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpreation: no mutations in {args.vcf}, no interpretation report.")
