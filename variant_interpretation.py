@@ -14,14 +14,14 @@ def get_intervals(regions: pandas.DataFrame):
     generate intervals
     """
     global rpoB_codon
-    global mmpS5, mmpL5, rplC, pepQ, atpE, mmpR5
-    global mmpR5_promoter, atpE_promoter, pepQ_promoter, rplC_promoter
+    global mmpS5, mmpL5, rplC, pepQ, atpE, Rv0678
+    global Rv0678_promoter, atpE_promoter, pepQ_promoter, rplC_promoter
     global rrl_rRNA_1, rrl_rRNA_1_complement
 
     for index, row in regions.iterrows():
-        if row["gene"] == "mmpR5":
-            mmpR5 = Interval(row["start"], row["stop"])
-            mmpR5_promoter = Interval(row["start"] - 84, row["stop"] - 1)
+        if row["gene"] == "Rv0678":
+            Rv0678 = Interval(row["start"], row["stop"])
+            Rv0678_promoter = Interval(row["start"] - 84, row["stop"] - 1)
 
         if row["gene"] == "atpE":
             atpE = Interval(row["start"], row["stop"])
@@ -54,7 +54,7 @@ def get_intervals(regions: pandas.DataFrame):
             rpoB_codon = Interval(426, 452)
 
 
-gene_list_1 = ["mmpR5", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
+gene_list_1 = ["Rv0678", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
 gene_list_2 = ["katG", "pncA", "ethA", "gid", "rpoB"]
 gene_list_3 = ["katG", "pncA", "ethA", "gid"]
 
@@ -73,20 +73,20 @@ mdl_3_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U"
 
 def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, annotation: str) -> list[str]:
     """
-    get interpretation for mmpR5, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
+    get interpretation for Rv0678, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
     """
     is_synonymous = annotation == "synonymous_variant"
     is_nonsynonymous = annotation != "synonymous_variant"
     looker = mdl = ""
 
-    if gene == "mmpR5":
-        if mmpR5.contains(genomic_position) & is_synonymous:
+    if gene == "Rv0678":
+        if Rv0678.contains(genomic_position) & is_synonymous:
             looker = mdl = "S"
-        if mmpR5.contains(genomic_position) & is_nonsynonymous:
+        if Rv0678.contains(genomic_position) & is_nonsynonymous:
             looker = mdl = "U"
-        if mmpR5_promoter.contains(genomic_position):
+        if Rv0678_promoter.contains(genomic_position):
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant" and not mmpR5_promoter.contains(genomic_position):
+        if annotation == "upstream_gene_variant" and not Rv0678_promoter.contains(genomic_position):
             looker = "U"
             mdl = "S"
 
@@ -298,7 +298,9 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
             tsv_out.loc[i, tsv_out.columns] = row
             i = i + 1
         else:
-            for idx, item in enumerate(drug_annotation):
+            # remove duplicate entries from json
+            drug_annotation_uniq = list(set( (x[0],x[1]) for x in drug_annotation ))
+            for idx, item in enumerate(drug_annotation_uniq):
                 row["count"] = idx + 1
                 row["antimicrobial"] = item[0]
                 row["confidence"] = item[1]
@@ -504,7 +506,7 @@ if __name__ == "__main__":
     vcf_df = vcf_to_pandas_dataframe(args.vcf, args.sample_name, args.bed)
     #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
     if len(vcf_df.index) == 0:
-        print(f"<W> variant_interpreation: no mutations in {args.vcf}, no interpretation report.")
+        print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
     else:
         # get drug annotation
         tsv_out = add_drug_annotation(vcf_df, args.json)
@@ -514,7 +516,6 @@ if __name__ == "__main__":
         # get drug information for region
         regions = pandas.read_csv(args.bed, header=None, sep="\t")
         regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
-        #print(regions)
         regions["chemical"] = regions["chemical"].astype("str")
         get_intervals(regions)
         drug_info = dict(zip(regions.gene, regions.chemical))
@@ -524,7 +525,6 @@ if __name__ == "__main__":
         gene_coverage = pandas.merge(coverage, regions, on="start", how="right")
         coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
         coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
-        #print(coverage_average)
         #gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
     
         # get interpretation

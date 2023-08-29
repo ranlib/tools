@@ -41,6 +41,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str, bed_file: str) -> p
     genes = regions["gene"]
     
     # get annotation terms from header
+    # check there are mutations in input vcf file
     if "ANN" in vcf_reader.infos:
         annotation = vcf_reader.infos["ANN"].desc
         _, terms = re.split(r":[ ]+", annotation)
