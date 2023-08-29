@@ -264,18 +264,21 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="lims report", prog="lims_report", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
-    parser.add_argument("--lab", "-l", type=str, dest="lab", help="input lab tsv report", required=True)
+    parser.add_argument("--lab", "-l", type=argparse.FileType('r'), dest="lab", help="input lab tsv report", required=True)
     parser.add_argument("--operator", "-o", type=str, dest="operator", help="input operator name", required=True)
-    parser.add_argument("--lineages", "-s", type=str, dest="lineages", help="input lineage tsv file", required=True)
-    parser.add_argument("--bed", "-b", type=str, dest="bed", help="input bed file", required=True)
-    parser.add_argument("--lims", "-r", type=str, dest="lims", help="output lims tsv report", required=True)
+    parser.add_argument("--lineages", "-s", type=argparse.FileType('r'), dest="lineages", help="input lineage tsv file", nargs="?")
+    parser.add_argument("--bed", "-b", type=argparse.FileType('r'), dest="bed", help="input bed file", required=True)
+    parser.add_argument("--lims", "-r", type=argparse.FileType('w'), dest="lims", help="output lims tsv report", required=True)
     parser.add_argument("--verbose", "-v", action="store_true", help="turn on debugging output")
     args = parser.parse_args()
 
     # get lineage from lineages file
-    lineages = pandas.read_csv(args.lineages, sep="\t")
-    lineage = lineages.loc[0, "Lineage Name"]
-
+    if args.lineages is not None:
+        lineages = pandas.read_csv(args.lineages, sep="\t")
+        lineage = lineages.loc[0, "Lineage Name"]
+    else:
+        lineage = "Lineage information not available"
+        
     # create lims report
     df = lims_report(args.lab, args.bed, lineage, args.operator, args.verbose)
     df.to_csv(args.lims, sep="\t", index=False)
