@@ -1,0 +1,13 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends python3  python3-pip python-is-python3 && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install pyvcf3
+
+COPY get_lineage.py  /opt/lineage/
+ENV PATH=$PATH:/opt/lineage
