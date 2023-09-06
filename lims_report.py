@@ -17,6 +17,8 @@ def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annota
     :param str amino_acid_change
     :return chemical_evaluation
     """
+    chemical_evaluation = ""
+    
     if severity == "R":
         if gene == "rpoB":
             if amino_acid_change in ["Leu430Pro", "Asp435Tyr", "His445Asn", "His445Ser", "His445Leu", "His445Cys", "Leu452Pro", "Ile491Phe"]:
