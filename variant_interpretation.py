@@ -10,6 +10,7 @@ from vcf_to_pandas_dataframe import vcf_to_pandas_dataframe
 from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 
+
 def get_intervals(regions: pandas.DataFrame):
     """
     generate intervals
@@ -146,8 +147,8 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
         if rrl_rRNA_1.contains(cds_position):
             looker = mdl = "U"
         if rrl_rRNA_1_complement.contains(cds_position):
-            #looker = "S"
-            #mdl = "U"
+            # looker = "S"
+            # mdl = "U"
             looker = "U"
             mdl = "S"
 
@@ -172,6 +173,7 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
 #             looker = "U"
 #             mdl = "S"
 #     return [looker, mdl]
+
 
 def get_interpretation_2_2_1(annotation: str) -> list[str]:
     """
@@ -236,7 +238,7 @@ def get_interpretation_3_2_1(position: int) -> list[str]:
     :param int position: genomic position in NC_000962.3
     :return: list with 2 strings
     """
-    if position in [ 1473246, 1473247, 1473329 ]:
+    if position in [1473246, 1473247, 1473329]:
         looker = mdl = "U"
     else:
         looker = "U"
@@ -247,7 +249,7 @@ def get_interpretation_3_2_1(position: int) -> list[str]:
 def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFrame:
     """
     add drug annotation to variants
-    
+
     :param str inputfile: filename of vcf file in tsv format
     :param str annotation: filename of json file wit drug annotation
     :return: pandas dataframe of input tsv file with drug annotation
@@ -301,7 +303,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
             i = i + 1
         else:
             # remove duplicate entries from json
-            drug_annotation_uniq = list(set( (x[0],x[1]) for x in drug_annotation ))
+            drug_annotation_uniq = list(set((x[0], x[1]) for x in drug_annotation))
             for idx, item in enumerate(drug_annotation_uniq):
                 row["count"] = idx + 1
                 row["antimicrobial"] = item[0]
@@ -312,7 +314,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
     return tsv_out
 
 
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {},  filter_genes: bool, verbose: bool):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, filter_genes: bool, verbose: bool):
     """
     interpretation
     """
@@ -409,9 +411,9 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # manufacture default row for output dataframe
 
     # keep only genes of interest
-    #print(coverage_average.keys())
+    # print(coverage_average.keys())
     if filter_genes:
-        #tsv_mutations = tsv_mutations[tsv_mutations["Gene Name"].isin(gene_list_1 + gene_list_2)]
+        # tsv_mutations = tsv_mutations[tsv_mutations["Gene Name"].isin(gene_list_1 + gene_list_2)]
         number_of_entries = len(tsv_mutations.index)
         tsv_mutations = tsv_mutations[tsv_mutations["Gene Name"].isin(coverage_average.keys())]
         number_of_entries_after_filter = len(tsv_mutations.index)
@@ -422,18 +424,18 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_no_mutations = pandas.DataFrame(columns=list(tsv_mutations.columns))
     index = 0
     for sample in tsv_mutations["Sample ID"].unique().tolist():
-        #for gene in gene_list_1 + gene_list_2:
+        # for gene in gene_list_1 + gene_list_2:
         for gene in coverage_average:
             if gene not in genes_with_mutations:
                 average_coverage_in_region = coverage_average[gene] if gene in coverage_average else -1
                 percent_above_threshold = coverage_percentage[gene] if gene in coverage_average else -1
-                #if average_coverage_in_region > minimum_coverage:
+                # if average_coverage_in_region > minimum_coverage:
                 has_no_coverage = percent_above_threshold < 100.0
                 has_deletion = has_no_coverage and has_deletions[gene]
-                if (not has_no_coverage or has_deletion):
+                if not has_no_coverage or has_deletion:
                     # 4.1 there is coverage
-                    #for drug in drug_info[gene].split(","):
-                    #tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
+                    # for drug in drug_info[gene].split(","):
+                    # tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
                     tsv_no_mutations.loc[index, "Sample ID"] = sample
                     tsv_no_mutations.loc[index, "Gene Name"] = gene
                     tsv_no_mutations.loc[index, "Gene ID"] = "N/A"
@@ -447,8 +449,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_no_mutations.loc[index, "Variant Read Depth"] = -1
                     tsv_no_mutations.loc[index, "Percent Alt Allele"] = -1.0
                     tsv_no_mutations.loc[index, "rationale"] = "WT"
-                    #tsv_no_mutations.loc[index, "antimicrobial"] = drug
-                    tsv_no_mutations.loc[index, "antimicrobial"] =  drug_info[gene] if gene in drug_info else "N/A"
+                    # tsv_no_mutations.loc[index, "antimicrobial"] = drug
+                    tsv_no_mutations.loc[index, "antimicrobial"] = drug_info[gene] if gene in drug_info else "N/A"
                     tsv_no_mutations.loc[index, "average_coverage_in_region"] = average_coverage_in_region
                     tsv_no_mutations.loc[index, "percent_above_threshold"] = percent_above_threshold
                     tsv_no_mutations.loc[index, "looker"] = "S"
@@ -456,8 +458,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     index = index + 1
                 else:
                     # 4.2 there is not enough coverage
-                    #for drug in drug_info[gene].split(","):
-                    #tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
+                    # for drug in drug_info[gene].split(","):
+                    # tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
                     tsv_no_mutations.loc[index, "Sample ID"] = sample
                     tsv_no_mutations.loc[index, "Gene Name"] = gene
                     tsv_no_mutations.loc[index, "Gene ID"] = "N/A"
@@ -471,7 +473,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_no_mutations.loc[index, "Variant Read Depth"] = -1
                     tsv_no_mutations.loc[index, "Percent Alt Allele"] = -1.0
                     tsv_no_mutations.loc[index, "rationale"] = "Insufficient Coverage"
-                    #tsv_no_mutations.loc[index, "antimicrobial"] = drug
+                    # tsv_no_mutations.loc[index, "antimicrobial"] = drug
                     tsv_no_mutations.loc[index, "antimicrobial"] = drug_info[gene] if gene in drug_info else "N/A"
                     tsv_no_mutations.loc[index, "average_coverage_in_region"] = average_coverage_in_region
                     tsv_no_mutations.loc[index, "percent_above_threshold"] = percent_above_threshold
@@ -481,23 +483,21 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
     tsv_final = pandas.concat([tsv_mutations, tsv_no_mutations])
     # break up rows with "," separated list of anti_microbials into several rows
-    tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(',')).explode("antimicrobial")
+    tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(",")).explode("antimicrobial")
 
     # create warning column bases on region coverage
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else "N/A") )
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else "N/A"))
 
     return [tsv_final, genes_with_mutations]
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="variant interpretation",
-                                     prog="variant_interpretation",
-                                     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=100))
+    parser = argparse.ArgumentParser(description="variant interpretation", prog="variant_interpretation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=100))
     parser.add_argument("--vcf", "-v", type=argparse.FileType("r"), help="annotated vcf file", required=True)
     parser.add_argument("--bam", "-b", type=argparse.FileType("r"), help="annotated vcf file", required=True)
     parser.add_argument("--bed", "-i", type=argparse.FileType("r"), help="bed file with regions of interest", required=True)
     parser.add_argument("--json", "-j", type=argparse.FileType("r"), help="json file with drug annotation", required=True)
-    parser.add_argument("--samplename", "-s", type=str, dest = "samplename", help="sample name", required=True)
+    parser.add_argument("--samplename", "-s", type=str, dest="samplename", help="sample name", required=True)
     parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", default=0)
     parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", default=0)
     parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", default=0)
@@ -511,16 +511,16 @@ if __name__ == "__main__":
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
 
     # filter out large deletion
-    vcf_df = vcf_df[ vcf_df["ALT"] != "<DEL>"]
+    vcf_df = vcf_df[vcf_df["ALT"] != "<DEL>"]
 
-    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    # vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
 
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
     else:
         # get drug annotation
         tsv_out = add_drug_annotation(vcf_df, args.json.name)
-        #tsv_out.to_csv(args.output, index=False, sep="\t")
+        # tsv_out.to_csv(args.output, index=False, sep="\t")
 
         # get intervals
         # get drug information for region
@@ -529,17 +529,17 @@ if __name__ == "__main__":
         regions["chemical"] = regions["chemical"].astype("str")
         get_intervals(regions)
         drug_info = dict(zip(regions.gene, regions.chemical))
-    
+
         # get coverage
         coverage = calculate_average_depth(args.bam.name, args.bed.name, args.minimum_coverage)
         gene_coverage = pandas.merge(coverage, regions, on="start", how="right")
         coverage_percentage = dict(zip(gene_coverage.gene, gene_coverage.percent_above_threshold))
         coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
-        #gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
+        # gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
 
         # check which regions contain large deletions
         has_deletions = get_deletions_in_region(args.vcf.name, args.bed.name)
-        
+
         # get interpretation
         tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_deletions, args.filter_genes, args.verbose)
         tsv_final.to_csv(args.report, index=False, sep="\t")
