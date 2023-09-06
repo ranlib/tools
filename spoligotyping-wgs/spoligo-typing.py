@@ -22,14 +22,15 @@ def get_spoligotype(filename, reads_limit=500000, threshold=2, spacers="dr_space
     # filter
     x = x[x.pident >= threshold]
     found = list(x.qseqid)
-    s = []
     # convert hits to binary code
-    for i in range(1, 44):
-        if i in found:
-            s.append("1")
-        else:
-            s.append("0")
-    s = "".join(s)
+    s = "".join([ str(int(item in found)) for item in list(range(1,44)) ])
+    # s = []
+    # for i in range(1, 44):
+    #     if i in found:
+    #         s.append("1")
+    #     else:
+    #         s.append("0")
+    # s = "".join(s)
     return s
 
 
