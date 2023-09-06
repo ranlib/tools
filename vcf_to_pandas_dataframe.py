@@ -2,138 +2,159 @@
 """
 read vcf file, loop over record, write tsv file
 """
-
 import re
-import vcf
 import pandas
 import argparse
 from collections import OrderedDict
+import vcf
 
-def select_variant(info_ann: [], genes_of_interest: []) -> []:
-    variants = []
-    print(len(info_ann))
-    for gene in genes_of_interest:
-        #print(gene)
-        #print(info_ann)
-        indices = [index for index, content in enumerate(info_ann) if gene in content]
-        if len(indices) > 0:
-            print(gene)
-            variants.extend([info_ann[i] for i in indices])
-            
 
-    print(variants)
-    print(len(variants))
-    return variants
-
-def vcf_to_pandas_dataframe(vcf_file: str, sample_name: str, bed_file: str) -> pandas.DataFrame:
+def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: bool, verbose: bool) -> pandas.DataFrame:
     """
     parse vcf file
 
-    :param str vcf_file: filename of vcf file
-    :param str sample_name: name of sample
+    :param str vcf_file: filename of annotated vcf file
+    :param str samplename: name of sample
     :param str bed_file: tab separated ascii file with 6 columns ["genome", "start", "stop", "locus", "gene", "chemical"]
     :return: pandas data frame
     """
+
+    # loop over vcf file
     vcf_reader = vcf.Reader(filename=vcf_file)
-    
-    regions = pandas.read_csv(bed_file, header=None, sep="\t")
-    regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
-    genes = regions["gene"]
-    
+
     # get annotation terms from header
     # check there are mutations in input vcf file
     if "ANN" in vcf_reader.infos:
         annotation = vcf_reader.infos["ANN"].desc
         _, terms = re.split(r":[ ]+", annotation)
-        ann_keys = terms.replace("'", "").split(" | ")
+        annotation_keys = terms.replace("'", "").split(" | ")
     else:
         print(f"<W> vcf_to_pandas_dataframe: no mutations in {vcf_file}, return empty dataframe")
         df = pandas.DataFrame()
-        print(df)
-        print(len(df.index))
         return df
-        
+
     # loop over records
     ANNS = []
     for record in vcf_reader:
         vcf_item = OrderedDict()
-        vcf_item["Sample ID"] = sample_name
+        vcf_item["Sample ID"] = samplename
         vcf_item["CHROM"] = record.CHROM
         vcf_item["POS"] = record.POS
-        #vcf_item["ID"] = "." if not record.ID else record.ID
+        # vcf_item["ID"] = "." if not record.ID else record.ID
         vcf_item["REF"] = record.REF
-        vcf_item["ALT"] = ','.join([ str(n) for n in record.ALT ])
-        #vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
+        vcf_item["ALT"] = ",".join([str(n) for n in record.ALT])
+        # vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
         vcf_item["FILTER"] = "." if not record.FILTER else ";".join(record.FILTER)
 
-        print(sample_name, record.CHROM, record.POS, record.REF, record.ALT)
-        
+        if filter_variants:
+            if record.FILTER:
+                print(f"<W> vcf_to_pandas_dataframe: filter out variant with filter column entry {record.FILTER}")
+                continue
+
         info = record.INFO
-        selected_variant = select_variant(info["ANN"], genes)
-        item = info["ANN"][0]
-        ann_item = dict(zip(ann_keys, item.split("|")))
-        cDNA = ann_item["cDNA.pos / cDNA.length"].split("/")
-        CDS = ann_item["CDS.pos / CDS.length"].split("/")
-        AA = ann_item["AA.pos / AA.length"].split("/")
+        if "ANN" not in info:
+            print(f"<I> vcf_to_pandas_dataframe: variant with no annotation {vcf_item}")
+        else:
+            if len(info["ANN"]) == 0:
+                annotation_item = dict(zip(annotation_keys, list(range(len(annotation_keys)))))
+                annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = [-1, -1]
+                annotation_item["CDS.pos"], annotation_item["CDS.length"] = [-1, -1]
+                annotation_item["AA.pos"], annotation_item["AA.length"] = [-1, -1]
+                annotation_item["Total Read Depth"] = -1
+                annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
+                annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
+            else:
+                # check first entry in annotation list
+                item = info["ANN"][0]
+                annotation_item = dict(zip(annotation_keys, item.split("|")))
 
-        ann_item["cDNA.pos"], ann_item["cDNA.length"] = [-1,-1]
-        ann_item["CDS.pos"], ann_item["CDS.length"] = [-1,-1]
-        ann_item["AA.pos"], ann_item["AA.length"] = [-1,-1]
+                # if first entry in annotation list is modifier then look for the closest annotation
+                is_modifier = annotation_item["Annotation_Impact"] == "MODIFIER"
+                is_large_deletion = "<DEL>" in vcf_item["ALT"]
+                if is_modifier and not is_large_deletion:
+                    # print(annotation_item)
+                    distances = []
+                    annotation_item_list = []
+                    for annotation in info["ANN"]:
+                        annotation_item = dict(zip(annotation_keys, annotation.split("|")))
+                        annotation_item_list.append(annotation_item)
+                        distances.append(annotation_item["Distance"])
 
-        if len(cDNA) == 2:
-            ann_item["cDNA.pos"], ann_item["cDNA.length"] = list( map(int, cDNA) )
-        if len(CDS) == 2:
-            ann_item["CDS.pos"], ann_item["CDS.length"] = list( map(int, CDS))
-        if len(AA) == 2:
-            ann_item["AA.pos"], ann_item["AA.length"] = list( map(int, AA))
+                    distances.remove("")
+                    distances = list(map(int, distances))
+                    # closest_distance = min(distances)
+                    closest_index = distances.index(min(distances))
+                    annotation_item = annotation_item_list[closest_index]
 
-        ann_item["Total Read Depth"] = record.genotype(sample_name)["DP"]
-        ann_item["AD_REF"], ann_item["Variant Read Depth"] = record.genotype(sample_name)["AD"]
-        #ann_item["Percent Alt Allele"] = record.genotype(sample_name)["AF"]
-        ann_item["Percent Alt Allele"] = -1 if ann_item["Total Read Depth"] == 0 else ann_item["Variant Read Depth"] * 100.0 / ann_item["Total Read Depth"]
+                cDNA = annotation_item["cDNA.pos / cDNA.length"].split("/")
+                CDS = annotation_item["CDS.pos / CDS.length"].split("/")
+                AA = annotation_item["AA.pos / AA.length"].split("/")
 
-        # kick out some keys
-        forget_this = [ "Allele",
-                        "Feature_Type",
-                        "Feature_ID",
-                        "Transcript_BioType",
-                        "Rank",
-                        "cDNA.pos / cDNA.length",
-                        "CDS.pos / CDS.length",
-                        "AA.pos / AA.length",
-                        "Distance",
-                        "ERRORS / WARNINGS / INFO ",
-                        "cDNA.pos",
-                        "cDNA.length",
-                        "CDS.length",
-                        "AA.pos",
-                        "AA.length",
-                        "AD_REF"
-                       ]
-        for item in forget_this:
-            if item in ann_item:
-                ann_item.pop(item)
+                annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = [-1, -1]
+                annotation_item["CDS.pos"], annotation_item["CDS.length"] = [-1, -1]
+                annotation_item["AA.pos"], annotation_item["AA.length"] = [-1, -1]
 
-        # rename some keys
-        ann_item['Gene Name'] = ann_item.pop("Gene_Name")
-        ann_item['Gene ID'] = ann_item.pop("Gene_ID")
-        ann_item['Nucleotide Change'] = ann_item.pop("HGVS.c")
-        ann_item['Amino acid Change'] = ann_item.pop("HGVS.p")
-        ann_item['Position within CDS'] = ann_item.pop("CDS.pos")
- 
-        ANNS.append(vcf_item | ann_item)
+                if len(cDNA) == 2:
+                    annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = list(map(int, cDNA))
 
+                if len(CDS) == 2:
+                    annotation_item["CDS.pos"], annotation_item["CDS.length"] = list(map(int, CDS))
+
+                if len(AA) == 2:
+                    annotation_item["AA.pos"], annotation_item["AA.length"] = list(map(int, AA))
+
+                the_call = record.genotype(samplename)
+
+                if hasattr(the_call.data, "DP"):
+                    annotation_item["Total Read Depth"] = record.genotype(samplename)["DP"]
+                else:
+                    annotation_item["Total Read Depth"] = -1
+
+                if hasattr(the_call.data, "AD"):
+                    annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = record.genotype(samplename)["AD"]
+                else:
+                    annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
+
+                # annotation_item["Percent Alt Allele"] = record.genotype(samplename)["AF"]
+                annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
+                ANNS.append(vcf_item | annotation_item)
+
+    # output dataframe
     df = pandas.DataFrame(ANNS)
+    # remove some columns
+    forget_this = [
+        "Allele",
+        "Feature_Type",
+        "Feature_ID",
+        "Transcript_BioType",
+        "Rank",
+        "cDNA.pos / cDNA.length",
+        "CDS.pos / CDS.length",
+        "AA.pos / AA.length",
+        "Distance",
+        "cDNA.pos",
+        "cDNA.length",
+        "CDS.length",
+        "AA.pos",
+        "AA.length",
+        "AD_REF",
+    ]
+    df = df.drop(forget_this, axis=1)
+    df = df.drop(df.columns[df.columns.str.contains("ERRORS / WARNINGS / INFO")], axis=1)
+    # rename some columns
+    new_names = {"Gene_Name": "Gene Name", "Gene_ID": "Gene ID", "HGVS.c": "Nucleotide Change", "HGVS.p": "Amino acid Change", "CDS.pos": "Position within CDS"}
+    df = df.rename(columns=new_names)
     return df
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="add drug annotation to tsv form of annotated vcf file", prog="add_drug_annotation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
-    parser.add_argument("--vcf", "-v", type=str, dest = "vcf_file", help="annotated vcf file", required=True)
-    parser.add_argument("--bed", "-i", type=str, help="bed file with regions of interest", required=True)
-    parser.add_argument("--sample_name", "-s", type=str, dest = "sample_name", help="sample name", required=True)
-    parser.add_argument("--tsv", "-t", type=str, dest = "output_tsv", help="output tsv file", required=True)
+    parser = argparse.ArgumentParser(description="vcf_to_pandas_dataframe", prog="vcf_to_pandas_dataframe", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
+    parser.add_argument("--vcf", "-v", type=argparse.FileType("r"), dest="vcf_file", help="annotated vcf file", required=True)
+    parser.add_argument("--samplename", "-s", type=str, dest="samplename", help="sample name", required=True)
+    parser.add_argument("--filter", "-f", action="store_true", help="filter out variants which are not labeled PASS in vcf filter column")
+    parser.add_argument("--verbose", action="store_true", help="turn on debugging output")
+    parser.add_argument("--tsv", "-t", type=str, dest="output_tsv", help="output tsv file", required=True)
     args = parser.parse_args()
 
-    df = vcf_to_pandas_dataframe(args.vcf_file, args.sample_name, args.bed)
+    df = vcf_to_pandas_dataframe(args.vcf_file.name, args.samplename, args.filter, args.verbose)
     df.to_csv(args.output_tsv, sep="\t", index=False)
