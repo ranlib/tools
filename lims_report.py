@@ -4,10 +4,19 @@ lab report ==> lims report
 """
 import argparse
 import datetime
+import logging
 import pandas
+
+# setup logging
+logger = logging.getLogger(__name__)
+# FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
+FORMAT = "[%(filename)s] %(message)s"
+logging.basicConfig(format=FORMAT)
+logging.basicConfig(encoding="utf-8")
 
 # interval of RRDR region for rpoB
 RRDR = pandas.Interval(left=426, right=452, closed="both")
+
 
 def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annotation: str, amino_acid_change: str, position_within_cds: int) -> str:
     """
@@ -20,7 +29,7 @@ def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annota
     :return chemical_evaluation
     """
     chemical_evaluation = ""
-    
+
     if severity in ["R", "R-interim"]:
         if gene == "rpoB":
             if amino_acid_change in ["Leu430Pro", "Asp435Tyr", "His445Asn", "His445Ser", "His445Leu", "His445Cys", "Leu452Pro", "Ile491Phe"]:
@@ -55,14 +64,13 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     """
     get evaluation of chemical/gene combination
     """
-    severities = chem_gene["mdl"].to_list()
+    severities = chem_gene["looker"].to_list()
     nt_changes = chem_gene["Nucleotide_Change"].to_list()
     aa_changes = chem_gene["Amino_acid_Change"].to_list()
     aa_changes_with_parens = [f"({x})" for x in aa_changes]
     annotations = chem_gene["Annotation"].to_list()
     positions_within_cds = chem_gene["Position_within_CDS"].to_list()
 
-    rpoB_flag = False
     chem_gene_eval = []
     mut_counter = {"R": 0, "U": 0, "S": 0}
     for i, severity in enumerate(severities):
@@ -91,7 +99,7 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     return "; ".join(chem_gene_eval)
 
 
-def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbose: bool) -> pandas.DataFrame():
+def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str) -> pandas.DataFrame():
     """
     create lims report
     """
@@ -200,23 +208,22 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
     }
 
     # input = lab report
-    lab_cols = ["Sample ID", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "Gene Name", "antimicrobial", "Warning", "looker", "mdl"]
+    lab_cols = ["Sample ID", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "Gene Name", "antimicrobial", "Warning", "looker"]
     lab = pandas.read_csv(lab_tsv, sep="\t", usecols=lab_cols)
     lab.columns = lab.columns.str.replace(" ", "_")
-    
+
     # consider only variants which do not have a failed QC remark in Warning column of input lab report
     n_before = len(lab.index)
     # remove NAs
     lab = lab.fillna("")
-    lab = lab[ ~lab["Warning"].str.contains("Mutation failed QC") ]
+    lab = lab[~lab["Warning"].str.contains("Mutation failed QC")]
     n_after = len(lab.index)
-    if verbose:
-        print(f"<I> lims_report: remove variants with failed QC: number of variants before =  {n_before}, after = {n_after}")
-        
-    # mdl = category, determine sort order according to severity
+    logger.info(f"remove variants with failed QC: number of variants before =  {n_before}, after = {n_after}")
+
+    # looker = category, determine sort order according to severity
     # sort by severity, keep only most severe
-    lab["mdl"] = pandas.Categorical(lab["mdl"], ["R", "Insufficient Coverage", "R-interim", "U", "S-interim", "S", "WT"])
-    lab_sorted = lab.sort_values(["antimicrobial", "mdl"], ascending=True)
+    lab["looker"] = pandas.Categorical(lab["looker"], ["R", "Insufficient Coverage", "R-interim", "U", "S-interim", "S", "WT"])
+    lab_sorted = lab.sort_values(["antimicrobial", "looker"], ascending=True)
 
     # output = lims report
     lims = pandas.DataFrame(columns=header)
@@ -234,23 +241,19 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
 
     # loop over chemicals and fill lims report
     for chemical in chemicals:  # chemical from bed file
-        # print(chemical)
         if chemical not in chemical_to_column:  # hardcoded, make sure consistent with chemical from bed file
-            if verbose:
-                print(f"<W> lims_report: {chemical} not in list of chemicals, continuing.")
+            logger.warning(f"{chemical} not in list of chemicals, continuing.")
         else:
             filter_chem = "antimicrobial==@chemical"
             chem = lab_sorted.query(filter_chem)
             chem = chem.reset_index()
             if len(chem.index) == 0:
-                if verbose:
-                    print("<W> lims_report: no data for chemical {chemical}.")
+                logger.warning(f"no data for chemical {chemical}")
             else:
-                if verbose:
-                    print(chem)
+                logger.debug(chem)
                 # fill chemical header based on mutation with highest severity
                 gene = chem.iloc[0]["Gene_Name"]
-                severity = chem.iloc[0]["mdl"]
+                severity = chem.iloc[0]["looker"]
                 annotation = chem.iloc[0]["Annotation"]
                 amino_acid_change = chem.iloc[0]["Amino_acid_Change"]
                 position_within_cds = chem.iloc[0]["Position_within_CDS"]
@@ -259,14 +262,12 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
                 for gene in genes:
                     key = (gene, chemical)
                     if key not in gene_chemical_to_column:
-                        if verbose:
-                            print(f"<W> lims_report: ({gene}, {chemical}) not in map.")
+                        logger.debug(f"{gene}, {chemical}) not in map")
                     else:
                         # get information for gene/chemical information and fill column
                         filter_gene = "antimicrobial==@chemical & Gene_Name==@gene"
                         chem_gene = lab_sorted.query(filter_gene)
-                        if verbose:
-                            print(chem_gene)
+                        logger.debug(chem_gene)
                         lims.loc[0, gene_chemical_to_column[key]] = get_gene_chemical_evaluation(chem_gene, gene)
 
     return lims
@@ -274,13 +275,17 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="lims report", prog="lims_report", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
-    parser.add_argument("--lab", "-l", type=argparse.FileType('r'), dest="lab", help="input lab tsv report", required=True)
+    parser.add_argument("--lab", "-l", type=argparse.FileType("r"), dest="lab", help="input lab tsv report", required=True)
     parser.add_argument("--operator", "-o", type=str, dest="operator", help="input operator name", required=True)
-    parser.add_argument("--lineages", "-s", type=argparse.FileType('r'), dest="lineages", help="input lineage tsv file", nargs="?")
-    parser.add_argument("--bed", "-b", type=argparse.FileType('r'), dest="bed", help="input bed file", required=True)
-    parser.add_argument("--lims", "-r", type=argparse.FileType('w'), dest="lims", help="output lims tsv report", required=True)
-    parser.add_argument("--verbose", "-v", action="store_true", help="turn on debugging output")
+    parser.add_argument("--lineages", "-s", type=argparse.FileType("r"), dest="lineages", help="input lineage tsv file", nargs="?")
+    parser.add_argument("--bed", "-b", type=argparse.FileType("r"), dest="bed", help="input bed file", required=True)
+    parser.add_argument("--lims", "-r", type=argparse.FileType("w"), dest="lims", help="output lims tsv report", required=True)
+    parser.add_argument("--log_level", "-d", type=str, dest="log_level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help="logging level")
     args = parser.parse_args()
+
+    # logging
+    # logging.basicConfig(filename='lims_report.log')
+    logger.setLevel(args.log_level)
 
     # get lineage from lineages file
     if args.lineages is not None:
@@ -288,7 +293,7 @@ if __name__ == "__main__":
         lineage = lineages.loc[0, "Lineage Name"]
     else:
         lineage = "Lineage information not available"
-        
+
     # create lims report
-    df = lims_report(args.lab, args.bed, lineage, args.operator, args.verbose)
+    df = lims_report(args.lab, args.bed, lineage, args.operator)
     df.to_csv(args.lims, sep="\t", index=False)
