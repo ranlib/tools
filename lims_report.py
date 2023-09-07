@@ -6,8 +6,10 @@ import argparse
 import datetime
 import pandas
 
+# interval of RRDR region for rpoB
+RRDR = pandas.Interval(left=426, right=452, closed="both")
 
-def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annotation: str, amino_acid_change: str) -> str:
+def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annotation: str, amino_acid_change: str, position_within_cds: int) -> str:
     """
     get chemical evalution based on severity and other variables
     :param str severity
@@ -19,7 +21,7 @@ def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annota
     """
     chemical_evaluation = ""
     
-    if severity == "R":
+    if severity in ["R", "R-interim"]:
         if gene == "rpoB":
             if amino_acid_change in ["Leu430Pro", "Asp435Tyr", "His445Asn", "His445Ser", "His445Leu", "His445Cys", "Leu452Pro", "Ile491Phe"]:
                 chemical_evaluation = "Predicted low-level resistance to rifampin; may test susceptible by phenotypic methods"
@@ -31,11 +33,11 @@ def get_chemical_evaluation(severity: str, antimicrobial: str, gene: str, annota
     if severity == "U":
         chemical_evaluation = f"The detected mutation(s) have uncertain significance; resistance to {antimicrobial} cannot be ruled out"
 
-    if severity == "S":
+    if severity in ["S", "S-interim"]:
         if antimicrobial != "rifampin":
             chemical_evaluation = f"No mutations associated with resistance to {antimicrobial} detected"
         else:  # rifampin
-            if annotation == "synonymous_variant":
+            if (annotation == "synonymous_variant") and (position_within_cds in RRDR):
                 chemical_evaluation = "Predicted susceptibility to rifampin. The detected synonymous mutation(s) do not confer resistance"
             else:
                 chemical_evaluation = "Predicted susceptibility to rifampin"
@@ -60,9 +62,6 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     annotations = chem_gene["Annotation"].to_list()
     positions_within_cds = chem_gene["Position_within_CDS"].to_list()
 
-    # interval of RRDR region for rpoB
-    RRDR = pandas.Interval(left=426, right=452, closed="both")
-
     rpoB_flag = False
     chem_gene_eval = []
     mut_counter = {"R": 0, "U": 0, "S": 0}
@@ -78,7 +77,6 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
         if severity == "S":
             if (gene == "rpoB") and (annotations[i] == "synonymous_variant") and (positions_within_cds[i] in RRDR):
                 chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i] + "[synonymous]")
-                rpoB_flag = True
             mut_counter["S"] += 1
 
         if severity == "WT":
@@ -87,7 +85,7 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
         if severity == "Insufficient Coverage":
             chem_gene_eval.append("No sequence")
 
-    if (mut_counter["R"] == 0) and (mut_counter["U"] == 0) and (mut_counter["S"] > 0) and not rpoB_flag:
+    if (mut_counter["R"] == 0) and (mut_counter["U"] == 0) and (mut_counter["S"] > 0):
         chem_gene_eval.append("No high confidence mutations detected")
 
     return "; ".join(chem_gene_eval)
@@ -208,7 +206,7 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
 
     # mdl = category, determine sort order according to severity
     # sort by severity, keep only most severe
-    lab["mdl"] = pandas.Categorical(lab["mdl"], ["R", "U", "S", "WT"])
+    lab["mdl"] = pandas.Categorical(lab["mdl"], ["R", "Insufficient Coverage", "R-interim", "U", "S-interim", "S", "WT"])
     lab_sorted = lab.sort_values(["antimicrobial", "mdl"], ascending=True)
 
     # output = lims report
@@ -246,7 +244,8 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
                 severity = chem.iloc[0]["mdl"]
                 annotation = chem.iloc[0]["Annotation"]
                 amino_acid_change = chem.iloc[0]["Amino_acid_Change"]
-                lims.loc[0, chemical_to_column[chemical]] = get_chemical_evaluation(severity, chemical, gene, annotation, amino_acid_change)
+                position_within_cds = chem.iloc[0]["Position_within_CDS"]
+                lims.loc[0, chemical_to_column[chemical]] = get_chemical_evaluation(severity, chemical, gene, annotation, amino_acid_change, position_within_cds)
 
                 for gene in genes:
                     key = (gene, chemical)
