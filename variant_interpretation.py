@@ -314,7 +314,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
     return tsv_out
 
 
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, filter_genes: bool, verbose: bool):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int,  filter_genes: bool, verbose: bool):
     """
     interpretation
     """
@@ -484,10 +484,21 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final = pandas.concat([tsv_mutations, tsv_no_mutations])
     # break up rows with "," separated list of anti_microbials into several rows
     tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(",")).explode("antimicrobial")
+    tsv_final = tsv_final.reset_index(drop=True)
 
     # create warning column bases on region coverage
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else "N/A"))
-
+    #tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else ""))
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "Insufficient breadth of coverage for locus" if x < 100.0 else ""))
+    
+    # variant QC, add to warning column
+    for index, row in tsv_final.iterrows():
+        pass_allele_percentage = row["Percent Alt Allele"] > minimum_allele_percentage
+        pass_total_depth = row["Total Read Depth"] >= minimum_total_depth
+        pass_variant_depth = row["Variant Read Depth"] >= minimum_variant_depth
+        pass_all = pass_allele_percentage and pass_total_depth and pass_variant_depth
+        if not pass_all:
+            tsv_final.loc[index, "Warning"] += "Mutation failed QC" if row["Warning"] == "" else ", Mutation failed QC"
+        
     return [tsv_final, genes_with_mutations]
 
 
@@ -501,6 +512,7 @@ if __name__ == "__main__":
     parser.add_argument("--minimum_coverage", type=int, help="minimum average coverage in region (default: %(default)s)", default=0)
     parser.add_argument("--minimum_total_depth", type=int, help="minimum total number of reads at variant location (default: %(default)s)", default=0)
     parser.add_argument("--minimum_variant_depth", type=int, help="minimum number of reads that support variant (default: %(default)s)", default=0)
+    parser.add_argument("--minimum_allele_percentage", type=float, help="minimum variant allele percentage  (default: %(default)s)", default=0)
     parser.add_argument("--report", "-r", type=argparse.FileType("w"), help="another tsv output file", required=True)
     parser.add_argument("--filter_genes", "-f", action="store_true", help="output only genes of interest")
     parser.add_argument("--filter_variants", action="store_true", help="take only variants with PASS in vcf filter column")
@@ -541,5 +553,5 @@ if __name__ == "__main__":
         has_deletions = get_deletions_in_region(args.vcf.name, args.bed.name)
 
         # get interpretation
-        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_deletions, args.filter_genes, args.verbose)
+        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_deletions, args.minimum_allele_percentage, args.minimum_total_depth, args.minimum_variant_depth, args.filter_genes, args.verbose)
         tsv_final.to_csv(args.report, index=False, sep="\t")
