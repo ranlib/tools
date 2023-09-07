@@ -200,10 +200,19 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
     }
 
     # input = lab report
-    lab_cols = ["Sample ID", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "Gene Name", "antimicrobial", "mdl"]
+    lab_cols = ["Sample ID", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "Gene Name", "antimicrobial", "Warning", "mdl"]
     lab = pandas.read_csv(lab_tsv, sep="\t", usecols=lab_cols)
     lab.columns = lab.columns.str.replace(" ", "_")
-
+    
+    # consider only variants which do not have a failed QC remark in Warning column of input lab report
+    n_before = len(lab.index))
+    # remove NAs
+    lab = lab.fillna("")
+    lab = lab[ ~lab["Warning"].str.contains("Mutation failed QC") ]
+    n_after = len(lab.index)
+    if verbose:
+        print(f"<I> lims_report: remove variants with failed QC: number of variants before =  {n_before}, after = {n_after}")
+        
     # mdl = category, determine sort order according to severity
     # sort by severity, keep only most severe
     lab["mdl"] = pandas.Categorical(lab["mdl"], ["R", "Insufficient Coverage", "R-interim", "U", "S-interim", "S", "WT"])
