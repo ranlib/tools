@@ -66,7 +66,7 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     chem_gene_eval = []
     mut_counter = {"R": 0, "U": 0, "S": 0}
     for i, severity in enumerate(severities):
-        if severity == "R":
+        if severity in ["R", "R-interim"]:
             chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i])
             mut_counter["R"] += 1
 
@@ -74,7 +74,7 @@ def get_gene_chemical_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
             chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i])
             mut_counter["U"] += 1
 
-        if severity == "S":
+        if severity in ["S", "S-interim"]:
             if (gene == "rpoB") and (annotations[i] == "synonymous_variant") and (positions_within_cds[i] in RRDR):
                 chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i] + "[synonymous]")
             mut_counter["S"] += 1
