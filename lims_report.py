@@ -200,12 +200,12 @@ def lims_report(lab_tsv: str, bed: str, lineage_name: str, operator: str, verbos
     }
 
     # input = lab report
-    lab_cols = ["Sample ID", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "Gene Name", "antimicrobial", "Warning", "mdl"]
+    lab_cols = ["Sample ID", "Position within CDS", "Nucleotide Change", "Amino acid Change", "Annotation", "Gene Name", "antimicrobial", "Warning", "looker", "mdl"]
     lab = pandas.read_csv(lab_tsv, sep="\t", usecols=lab_cols)
     lab.columns = lab.columns.str.replace(" ", "_")
     
     # consider only variants which do not have a failed QC remark in Warning column of input lab report
-    n_before = len(lab.index))
+    n_before = len(lab.index)
     # remove NAs
     lab = lab.fillna("")
     lab = lab[ ~lab["Warning"].str.contains("Mutation failed QC") ]
