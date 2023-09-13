@@ -9,7 +9,7 @@ from sympy import Interval
 from vcf_to_pandas_dataframe import vcf_to_pandas_dataframe
 from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
-
+from intersect_vcf_bed import intersect_vcf_bed
 
 def get_intervals(regions: pandas.DataFrame):
     """
@@ -418,7 +418,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
         tsv_mutations = tsv_mutations[tsv_mutations["Gene Name"].isin(coverage_average.keys())]
         number_of_entries_after_filter = len(tsv_mutations.index)
         if verbose:
-            print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after filtering = {number_of_entries_after_filter}")
+            print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after gene filtering = {number_of_entries_after_filter}")
 
     # manufacture default rows for genes with no mutations and add them
     tsv_no_mutations = pandas.DataFrame(columns=list(tsv_mutations.columns))
@@ -505,6 +505,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="variant interpretation", prog="variant_interpretation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=100))
     parser.add_argument("--vcf", "-v", type=argparse.FileType("r"), help="annotated vcf file", required=True)
+    parser.add_argument("--filtered_vcf", type=argparse.FileType("w"), help="vcf file filtered to keep only large deletions which overlap a region of interest", required=True)
     parser.add_argument("--bam", "-b", type=argparse.FileType("r"), help="annotated vcf file", required=True)
     parser.add_argument("--bed", "-i", type=argparse.FileType("r"), help="bed file with regions of interest", required=True)
     parser.add_argument("--json", "-j", type=argparse.FileType("r"), help="json file with drug annotation", required=True)
@@ -519,14 +520,14 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action="store_true", help="turn on debugging output")
     args = parser.parse_args()
 
+    # filter vcf file, take only large deletions which overlap regions
+    #intersect_vcf_bed(args.vcf, args.bed.name, args.filtered_vcf)
+
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
-
-    # filter out large deletion
-    vcf_df = vcf_df[vcf_df["ALT"] != "<DEL>"]
-
-    # vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
-
+    #vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
+    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
     else:
@@ -534,13 +535,14 @@ if __name__ == "__main__":
         tsv_out = add_drug_annotation(vcf_df, args.json.name)
         # tsv_out.to_csv(args.output, index=False, sep="\t")
 
-        # get intervals
         # get drug information for region
-        regions = pandas.read_csv(args.bed, header=None, sep="\t")
+        regions = pandas.read_csv(args.bed.name, header=None, sep="\t")
         regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
         regions["chemical"] = regions["chemical"].astype("str")
-        get_intervals(regions)
         drug_info = dict(zip(regions.gene, regions.chemical))
+        
+        # get intervals
+        get_intervals(regions)
 
         # get coverage
         coverage = calculate_average_depth(args.bam.name, args.bed.name, args.minimum_coverage)
