@@ -11,6 +11,28 @@ from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 from intersect_vcf_bed import intersect_vcf_bed
 
+severity = {
+    "coverage": "Insufficient Coverage",
+    "wildtype": "WT",
+    "resistant": "R",
+    "resistant-interim": "R - interim",
+    "uncertain": "U",
+    "susceptible": "S",
+    "susceptible-interim": "S - interim",
+}
+
+
+def variant_qc(row: [], minimum_allele_percentage, minimum_total_depth, minimum_variant_depth) -> bool:
+    """
+    variant QC
+    """
+    pass_allele_percentage = row["Percent Alt Allele"] > minimum_allele_percentage
+    pass_total_depth = row["Total Read Depth"] >= minimum_total_depth
+    pass_variant_depth = row["Variant Read Depth"] >= minimum_variant_depth
+    pass_all = pass_allele_percentage and pass_total_depth and pass_variant_depth
+    return "PASS" if pass_all else "FAIL"
+
+
 def get_intervals(regions: pandas.DataFrame):
     """
     generate intervals
@@ -60,17 +82,59 @@ gene_list_1 = ["Rv0678", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
 gene_list_2 = ["katG", "pncA", "ethA", "gid", "rpoB"]
 gene_list_3 = ["katG", "pncA", "ethA", "gid"]
 
-looker_1_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "R - interim", "Not assoc w R": "S", "Not assoc w R - Interim": "S - interim", "Uncertain significance": "U"}
+looker_1_1 = {
+    "": "no WHO confidence",
+    "Assoc w R": "R",
+    "Assoc w R - interim": "R - interim",
+    "Not assoc w R": "S",
+    "Not assoc w R - Interim": "S - interim",
+    "Uncertain significance": "U",
+}
 
-mdl_1_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U", "Not assoc w R": "S", "Not assoc w R - Interim": "U", "Uncertain significance": "U"}
+mdl_1_1 = {
+    "": "no WHO confidence",
+    "Assoc w R": "R",
+    "Assoc w R - interim": "U",
+    "Not assoc w R": "S",
+    "Not assoc w R - Interim": "U",
+    "Uncertain significance": "U",
+}
 
-looker_2_2 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "R - interim", "Not assoc w R": "S", "Not assoc w R - Interim": "S - interim", "Uncertain significance": "U"}
+looker_2_2 = {
+    "": "no WHO confidence",
+    "Assoc w R": "R",
+    "Assoc w R - interim": "R - interim",
+    "Not assoc w R": "S",
+    "Not assoc w R - Interim": "S - interim",
+    "Uncertain significance": "U",
+}
 
-mdl_2_2 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U", "Not assoc w R": "S", "Not assoc w R - Interim": "S", "Uncertain significance": "S"}
+mdl_2_2 = {
+    "": "no WHO confidence",
+    "Assoc w R": "R",
+    "Assoc w R - interim": "U",
+    "Not assoc w R": "S",
+    "Not assoc w R - Interim": "S",
+    "Uncertain significance": "S",
+}
 
-looker_3_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "R - interim", "Not assoc w R": "S", "Not assoc w R - Interim": "S - interim", "Uncertain significance": "U"}
+looker_3_1 = {
+    "": "no WHO confidence",
+    "Assoc w R": "R",
+    "Assoc w R - interim": "R - interim",
+    "Not assoc w R": "S",
+    "Not assoc w R - Interim": "S - interim",
+    "Uncertain significance": "U",
+}
 
-mdl_3_1 = {"": "no WHO confidence", "Assoc w R": "R", "Assoc w R - interim": "U", "Not assoc w R": "S", "Not assoc w R - Interim": "S", "Uncertain significance": "S"}
+mdl_3_1 = {
+    "": "no WHO confidence",
+    "Assoc w R": "R",
+    "Assoc w R - interim": "U",
+    "Not assoc w R": "S",
+    "Not assoc w R - Interim": "S",
+    "Uncertain significance": "S",
+}
 
 
 def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, annotation: str) -> list[str]:
@@ -314,7 +378,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
     return tsv_out
 
 
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int,  filter_genes: bool, verbose: bool):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int, filter_genes: bool, verbose: bool):
     """
     interpretation
     """
@@ -486,11 +550,11 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(",")).explode("antimicrobial")
     tsv_final = tsv_final.reset_index(drop=True)
 
-    # create warning column bases on region coverage
-    #tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else ""))
+    # create new column "Warning" based on region coverage
+    ##tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else ""))
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "Insufficient breadth of coverage for locus" if x < 100.0 else ""))
-    
-    # variant QC, add to warning column
+
+    # add variant QC to "Warning" column
     for index, row in tsv_final.iterrows():
         pass_allele_percentage = row["Percent Alt Allele"] > minimum_allele_percentage
         pass_total_depth = row["Total Read Depth"] >= minimum_total_depth
@@ -498,14 +562,24 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
         pass_all = pass_allele_percentage and pass_total_depth and pass_variant_depth
         if not pass_all:
             tsv_final.loc[index, "Warning"] += "Mutation failed QC" if row["Warning"] == "" else ", Mutation failed QC"
-        
+
+    # create new column "Breadth_of_coverage_QC" based on region coverage
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final["percent_above_threshold"].map(lambda x: "FAIL" if x < 100.0 else "PASS"))
+
+    # create new column "Variant_QC"
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
+
+    # update severity based on "Variant_QC" and "Breadth_of_coverage_QC"
+    tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", ["looker", "mdl"]] = "WT"
+    tsv_final.loc[tsv_final["Breadth_of_coverage_QC"] == "FAIL", ["looker", "mdl"]] = "Insufficient Coverage"
+
     return [tsv_final, genes_with_mutations]
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="variant interpretation", prog="variant_interpretation", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=100))
     parser.add_argument("--vcf", "-v", type=argparse.FileType("r"), help="annotated vcf file", required=True)
-    parser.add_argument("--filtered_vcf", type=argparse.FileType("w"), help="vcf file filtered to keep only large deletions which overlap a region of interest", required=True)
+    # parser.add_argument("--filtered_vcf", type=argparse.FileType("w"), help="vcf file filtered to keep only large deletions which overlap a region of interest", required=True)
     parser.add_argument("--bam", "-b", type=argparse.FileType("r"), help="annotated vcf file", required=True)
     parser.add_argument("--bed", "-i", type=argparse.FileType("r"), help="bed file with regions of interest", required=True)
     parser.add_argument("--json", "-j", type=argparse.FileType("r"), help="json file with drug annotation", required=True)
@@ -521,13 +595,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # filter vcf file, take only large deletions which overlap regions
-    #intersect_vcf_bed(args.vcf, args.bed.name, args.filtered_vcf)
+    # intersect_vcf_bed(args.vcf, args.bed.name, args.filtered_vcf)
 
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
-    #vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
-    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
-    
+    # vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
+    # vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
     else:
@@ -540,7 +614,7 @@ if __name__ == "__main__":
         regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
         regions["chemical"] = regions["chemical"].astype("str")
         drug_info = dict(zip(regions.gene, regions.chemical))
-        
+
         # get intervals
         get_intervals(regions)
 
