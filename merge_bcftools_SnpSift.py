@@ -42,7 +42,7 @@ d[["AD_REF", "AD_ALT"]] = d["AD"].str.split(",", expand=True)
 d = d.drop("AD", axis=1)
 for col in ["AD_ALT", "AD_REF", "DP"]:
     d[col] = d[col].astype('int')
-d["AF"] = d["AD_ALT"]/d["DP"].fillna(0)
+d["AF"] = d["AD_ALT"] * 100.0/d["DP"].fillna(0) # in percent
 
 s = pandas.read_csv(snpsift, sep="\t")
 s["AF"] = d["AF"]
