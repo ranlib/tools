@@ -21,7 +21,8 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
 
     # loop over vcf file
     vcf_reader = vcf.Reader(filename=vcf_file)
-
+    i = 0
+    
     # get annotation terms from header
     # check there are mutations in input vcf file
     if "ANN" in vcf_reader.infos:
@@ -45,11 +46,13 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
         vcf_item["ALT"] = ",".join([str(n) for n in record.ALT])
         # vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
         vcf_item["FILTER"] = "." if not record.FILTER else ";".join(record.FILTER)
-
-        if filter_variants:
-            if record.FILTER:
-                print(f"<W> vcf_to_pandas_dataframe: filter out variant with filter column entry {record.FILTER}")
-                continue
+        #print(i, record, flush=True)
+        i += 1
+        
+        #if filter_variants:
+        #    if record.FILTER:
+        #        print(f"<W> vcf_to_pandas_dataframe: filter out variant {record} with filter column entry {record.FILTER}")
+        #        continue
 
         info = record.INFO
         if "ANN" not in info:
@@ -119,6 +122,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
                 annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
                 ANNS.append(vcf_item | annotation_item)
 
+    #print(i,flush=True)
     # output dataframe
     df = pandas.DataFrame(ANNS)
     # remove some columns
