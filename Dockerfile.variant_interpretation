@@ -13,6 +13,7 @@ COPY variant_interpretation.py  /opt/variant_interpretation/
 COPY vcf_to_pandas_dataframe.py /opt/variant_interpretation/
 COPY coverage.py                /opt/variant_interpretation/
 COPY get_deletions_in_region.py /opt/variant_interpretation/
+COPY intersect_vcf_bed.py       /opt/variant_interpretation/
 
 ENV PYTHONPATH=$PYTHONPATH::/opt/variant_interpretation
 ENV PATH=$PATH:/opt/variant_interpretation
