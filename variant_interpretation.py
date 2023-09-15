@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-generate interpretation  
+generate severity code for variants
 """
 import argparse
 import json
@@ -22,14 +22,17 @@ severity = {
 }
 
 
-def variant_qc(row: [], minimum_allele_percentage, minimum_total_depth, minimum_variant_depth) -> bool:
+def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
     """
     variant QC
     """
-    pass_allele_percentage = row["Percent Alt Allele"] > minimum_allele_percentage
-    pass_total_depth = row["Total Read Depth"] >= minimum_total_depth
-    pass_variant_depth = row["Variant Read Depth"] >= minimum_variant_depth
-    pass_all = pass_allele_percentage and pass_total_depth and pass_variant_depth
+    if row["rationale"] == "WT":
+        pass_all = True
+    else:
+        pass_allele_percentage = row["Percent Alt Allele"] > minimum_allele_percentage
+        pass_total_depth = row["Total Read Depth"] >= minimum_total_depth
+        pass_variant_depth = row["Variant Read Depth"] >= minimum_variant_depth
+        pass_all = pass_allele_percentage and pass_total_depth and pass_variant_depth
     return "PASS" if pass_all else "FAIL"
 
 
@@ -42,7 +45,7 @@ def get_intervals(regions: pandas.DataFrame):
     global Rv0678_promoter, atpE_promoter, pepQ_promoter, rplC_promoter
     global rrl_rRNA_1, rrl_rRNA_1_complement
 
-    for index, row in regions.iterrows():
+    for _, row in regions.iterrows():
         if row["gene"] == "Rv0678":
             Rv0678 = Interval(row["start"], row["stop"])
             Rv0678_promoter = Interval(row["start"] - 84, row["stop"] - 1)
@@ -336,7 +339,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
 
     # loop over input dataframe, fill output dataframe
     i = 0
-    for index, row in tsv.iterrows():
+    for _, row in tsv.iterrows():
         position = int(row["POS"])
         gene_id = row["Gene ID"]
         nucleotide_change = row["Nucleotide Change"]
@@ -345,7 +348,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
         if gene_id in json_annotation:
             if nucleotide_change in list(json_annotation[gene_id].keys()):
                 if int(position) in json_annotation[gene_id][nucleotide_change]["genome_positions"]:
-                    for index, entry in enumerate(json_annotation[gene_id][nucleotide_change]["annotations"]):
+                    for _, entry in enumerate(json_annotation[gene_id][nucleotide_change]["annotations"]):
                         pair = ["", ""]
                         if "drug" in entry:
                             pair[0] = entry["drug"]
@@ -354,7 +357,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
                         drug_annotation.append(pair)
             elif amino_acid_change in list(json_annotation[gene_id].keys()):
                 if int(position) in json_annotation[gene_id][amino_acid_change]["genome_positions"]:
-                    for index, entry in enumerate(json_annotation[gene_id][amino_acid_change]["annotations"]):
+                    for _, entry in enumerate(json_annotation[gene_id][amino_acid_change]["annotations"]):
                         pair = ["", ""]
                         if "drug" in entry:
                             pair[0] = entry["drug"]
@@ -378,7 +381,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
     return tsv_out
 
 
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int, filter_genes: bool, verbose: bool):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_large_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int, filter_genes: bool, verbose: bool):
     """
     interpretation
     """
@@ -493,10 +496,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
             if gene not in genes_with_mutations:
                 average_coverage_in_region = coverage_average[gene] if gene in coverage_average else -1
                 percent_above_threshold = coverage_percentage[gene] if gene in coverage_average else -1
-                # if average_coverage_in_region > minimum_coverage:
-                has_no_coverage = percent_above_threshold < 100.0
-                has_deletion = has_no_coverage and has_deletions[gene]
-                if not has_no_coverage or has_deletion:
+                has_region_coverage = not( percent_above_threshold < 100.0 )
+                if has_region_coverage or has_large_deletions[gene]:
                     # 4.1 there is coverage
                     # for drug in drug_info[gene].split(","):
                     # tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
@@ -556,11 +557,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
     # add variant QC to "Warning" column
     for index, row in tsv_final.iterrows():
-        pass_allele_percentage = row["Percent Alt Allele"] > minimum_allele_percentage
-        pass_total_depth = row["Total Read Depth"] >= minimum_total_depth
-        pass_variant_depth = row["Variant Read Depth"] >= minimum_variant_depth
-        pass_all = pass_allele_percentage and pass_total_depth and pass_variant_depth
-        if not pass_all:
+        qc = variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth)
+        if qc == "FAIL":
             tsv_final.loc[index, "Warning"] += "Mutation failed QC" if row["Warning"] == "" else ", Mutation failed QC"
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
@@ -570,8 +568,12 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
 
     # update severity based on "Variant_QC" and "Breadth_of_coverage_QC"
-    tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", ["looker", "mdl"]] = "WT"
-    tsv_final.loc[tsv_final["Breadth_of_coverage_QC"] == "FAIL", ["looker", "mdl"]] = "Insufficient Coverage"
+    tsv_final["mdl_LIMSfinal"] = tsv_final["mdl"]
+    tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", "mdl_LIMSfinal"] = "WT"
+    tsv_final.loc[tsv_final["Breadth_of_coverage_QC"] == "FAIL", "mdl_LIMSfinal"] = "Insufficient Coverage"
+
+    # rename mdl column
+    tsv_final.rename(columns={"mdl": "mdl_prelim"}, inplace=True)
 
     return [tsv_final, genes_with_mutations]
 
@@ -626,8 +628,8 @@ if __name__ == "__main__":
         # gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
 
         # check which regions contain large deletions
-        has_deletions = get_deletions_in_region(args.vcf.name, args.bed.name)
+        has_large_deletions = get_deletions_in_region(args.vcf.name, args.bed.name)
 
         # get interpretation
-        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_deletions, args.minimum_allele_percentage, args.minimum_total_depth, args.minimum_variant_depth, args.filter_genes, args.verbose)
+        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_large_deletions, args.minimum_allele_percentage, args.minimum_total_depth, args.minimum_variant_depth, args.filter_genes, args.verbose)
         tsv_final.to_csv(args.report, index=False, sep="\t")
