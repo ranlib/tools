@@ -98,6 +98,10 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
 
     if (mut_counter["R"] == 0) and (mut_counter["U"] == 0) and (mut_counter["S"] > 0):
         chem_gene_eval.append("No high confidence mutations detected")
+        if "No mutations detected" in chem_gene_eval:
+            chem_gene_eval.remove("No mutations detected")
+        if "No sequence" in chem_gene_eval:
+            chem_gene_eval.remove("No sequence")
 
     return "; ".join(chem_gene_eval)
 
@@ -275,6 +279,14 @@ def lims_report(lab_tsv: str, lineage_name: str, operator: str) -> pandas.DataFr
         col = lims.loc[0, column]
         lims.loc[0, column] = "; ".join(list(set(col.split("; "))))
 
+    # collapse ",<blank>" separated string list of equivalent strings
+    # a = "No mutations detected"
+    # b = "No high confidence mutations detected"
+    # for column in lims.columns:
+    #     col = lims.loc[0, column]
+    #     if a in col and b in col:
+    #         lims.loc[0, column] = col.replace(b,"").lstrip("; ").rstrip("; ")
+    
     return lims
 
 
