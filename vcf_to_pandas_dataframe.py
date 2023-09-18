@@ -108,13 +108,33 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
 
                 the_call = record.genotype(samplename)
 
+                is_SV = False
+                if "SVTYPE" in info:
+                    is_SV = True
+
+                is_precise_SV = None
+                if is_SV and "PRECISE" in info:
+                    is_precise_SV = True
+                else:
+                    is_precise_SV = False
+                
                 if hasattr(the_call.data, "DP"):
                     annotation_item["Total Read Depth"] = record.genotype(samplename)["DP"]
+                elif hasattr(the_call.data,"DR") and hasattr(the_call.data,"DV") and not is_precise_SV:
+                    annotation_item["Total Read Depth"] = record.genotype(samplename)["DR"] + record.genotype(samplename)["DV"]
+                elif hasattr(the_call.data,"RR") and hasattr(the_call.data,"RV") and is_precise_SV:
+                    annotation_item["Total Read Depth"] = record.genotype(samplename)["RR"] + record.genotype(samplename)["RV"]
                 else:
                     annotation_item["Total Read Depth"] = -1
 
                 if hasattr(the_call.data, "AD"):
                     annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = record.genotype(samplename)["AD"]
+                elif hasattr(the_call.data,"DV") and hasattr(the_call.data,"DV") and not is_precise_SV:
+                    annotation_item["AD_REF"] = record.genotype(samplename)["DR"]
+                    annotation_item["Variant Read Depth"] = record.genotype(samplename)["DV"]
+                elif hasattr(the_call.data,"RV") and hasattr(the_call.data,"RV") and is_precise_SV:
+                    annotation_item["AD_REF"] = record.genotype(samplename)["RR"]
+                    annotation_item["Variant Read Depth"] = record.genotype(samplename)["RV"]
                 else:
                     annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
 
