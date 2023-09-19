@@ -21,7 +21,6 @@ severity = {
     "susceptible-interim": "S - interim",
 }
 
-
 def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
     """
     variant QC
@@ -398,7 +397,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
     genes_with_mutations = {}
     for index, row in tsv_mutations.iterrows():
-        if row["Gene Name"] in genes_with_mutations:
+        if row["Gene Name"] in genes_with_mutations: # for large deletions Gene Name could be a list
             genes_with_mutations[row["Gene Name"]] += 1
         else:
             genes_with_mutations[row["Gene Name"]] = 1
@@ -478,15 +477,26 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # manufacture default row for output dataframe
 
     # keep only genes of interest
-    # print(coverage_average.keys())
+    # since "Gene_Name" can be a &-separated list use sets and calculate intersection
     if filter_genes:
-        # tsv_mutations = tsv_mutations[tsv_mutations["Gene Name"].isin(gene_list_1 + gene_list_2)]
+        tsv_mutations_filtered = pandas.DataFrame(columns=list(tsv_mutations.columns))
+        genes_of_interest = set(coverage_average.keys())
         number_of_entries = len(tsv_mutations.index)
-        tsv_mutations = tsv_mutations[tsv_mutations["Gene Name"].isin(coverage_average.keys())]
+        idx = 0
+        for _, row in tsv_mutations.iterrows():
+            genes_affected_by_variant = set(row["Gene Name"].split("&"))
+            genes_in_intersection = genes_of_interest.intersection(genes_affected_by_variant)
+            if genes_in_intersection:
+                tsv_mutations_filtered.loc[idx,tsv_mutations_filtered.columns] = row
+                tsv_mutations_filtered.loc[idx,"Gene Name"] = "&".join(genes_in_intersection)
+                idx += 1
+            else:
+                print(f"<I> variant_interpreation:  no gene if interest in row: {row}")
+        tsv_mutations = tsv_mutations_filtered.reset_index(drop=True)        
         number_of_entries_after_filter = len(tsv_mutations.index)
         if verbose:
             print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after gene filtering = {number_of_entries_after_filter}")
-
+        
     # manufacture default rows for genes with no mutations and add them
     tsv_no_mutations = pandas.DataFrame(columns=list(tsv_mutations.columns))
     index = 0
@@ -602,14 +612,14 @@ if __name__ == "__main__":
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
     # vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
-    # vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
 
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
     else:
         # get drug annotation
         tsv_out = add_drug_annotation(vcf_df, args.json.name)
-        # tsv_out.to_csv(args.output, index=False, sep="\t")
+        #tsv_out.to_csv("vcf_df_drugs.tsv", index=False, sep="\t")
 
         # get drug information for region
         regions = pandas.read_csv(args.bed.name, header=None, sep="\t")
