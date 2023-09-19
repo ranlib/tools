@@ -556,19 +556,10 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     index = index + 1
 
     tsv_final = pandas.concat([tsv_mutations, tsv_no_mutations])
+
     # break up rows with "," separated list of anti_microbials into several rows
     tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(",")).explode("antimicrobial")
     tsv_final = tsv_final.reset_index(drop=True)
-
-    # create new column "Warning" based on region coverage
-    ##tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "% Coverage of region above threshold: false" if x < 100.0 else ""))
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Warning", tsv_final["percent_above_threshold"].map(lambda x: "Insufficient breadth of coverage for locus" if x < 100.0 else ""))
-
-    # add variant QC to "Warning" column
-    for index, row in tsv_final.iterrows():
-        qc = variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth)
-        if qc == "FAIL":
-            tsv_final.loc[index, "Warning"] += "Mutation failed QC" if row["Warning"] == "" else ", Mutation failed QC"
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final["percent_above_threshold"].map(lambda x: "FAIL" if x < 100.0 else "PASS"))
@@ -579,7 +570,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # update severity based on "Variant_QC" and "Breadth_of_coverage_QC"
     tsv_final["mdl_LIMSfinal"] = tsv_final["mdl"]
     tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", "mdl_LIMSfinal"] = "WT"
-    tsv_final.loc[tsv_final["Breadth_of_coverage_QC"] == "FAIL", "mdl_LIMSfinal"] = "Insufficient Coverage"
+    tsv_final.loc[(tsv_final["Breadth_of_coverage_QC"] == "FAIL") & (tsv_final["mdl"] != "R"), "mdl_LIMSfinal"] = "Insufficient Coverage"
 
     # rename mdl column
     tsv_final.rename(columns={"mdl": "mdl_prelim"}, inplace=True)
