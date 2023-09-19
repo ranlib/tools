@@ -240,6 +240,23 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
 #             mdl = "S"
 #     return [looker, mdl]
 
+# def get_interpretation_2_2_1(annotation: str) -> list[str]:
+#     """
+#     implementation of interpretation according to 2.2.1
+#     """
+#     is_synonymous = annotation == "synonymous_variant"
+#     is_nonsynonymous = annotation != "synonymous_variant"
+#     looker = mdl = ""
+
+#     if is_synonymous:
+#         looker = mdl = "S"
+
+#     if is_nonsynonymous or annotation == "upstream_gene_variant":
+#         looker = "U"
+#         mdl = "S"
+
+#     return [looker, mdl]
+
 
 def get_interpretation_2_2_1(annotation: str) -> list[str]:
     """
@@ -247,15 +264,17 @@ def get_interpretation_2_2_1(annotation: str) -> list[str]:
     """
     is_synonymous = annotation == "synonymous_variant"
     is_nonsynonymous = annotation != "synonymous_variant"
+    # ?
+    effect_types = ["feature_ablation", "disruptive_inframe_insertion", "frameshift_variant", "stop_lost", "splice_region_variant", "missense_variant", "upstream_gene_variant", "disruptive_inframe_deletion", "nonsense_variant"]
     looker = mdl = ""
-
-    if is_synonymous:
-        looker = mdl = "S"
-
-    if is_nonsynonymous or annotation == "upstream_gene_variant":
-        looker = "U"
-        mdl = "S"
-
+    if annotation in effect_types:
+        looker = mdl = "U"
+    else:
+        if is_synonymous:
+            looker = mdl = "S"
+        if is_nonsynonymous or annotation == "upstream_gene_variant":
+            looker = "U"
+            mdl = "S"
     return [looker, mdl]
 
 
