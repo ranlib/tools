@@ -100,8 +100,8 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
         chem_gene_eval.append("No high confidence mutations detected")
         if "No mutations detected" in chem_gene_eval:
             chem_gene_eval.remove("No mutations detected")
-        if "No sequence" in chem_gene_eval:
-            chem_gene_eval.remove("No sequence")
+        #if "No sequence" in chem_gene_eval:
+        #    chem_gene_eval.remove("No sequence")
 
     return "; ".join(chem_gene_eval)
 
