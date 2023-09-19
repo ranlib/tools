@@ -389,6 +389,27 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_mutations["average_coverage_in_region"] = [0] * len(tsv_mutations.index)
     tsv_mutations["percent_above_threshold"] = [0] * len(tsv_mutations.index)
 
+    # keep only genes of interest
+    # since "Gene_Name" can be a &-separated list use sets and calculate intersection
+    if filter_genes:
+        tsv_mutations_filtered = pandas.DataFrame(columns=list(tsv_mutations.columns))
+        genes_of_interest = set(coverage_average.keys())
+        number_of_entries = len(tsv_mutations.index)
+        idx = 0
+        for _, row in tsv_mutations.iterrows():
+            genes_affected_by_variant = set(row["Gene Name"].split("&"))
+            genes_in_intersection = genes_of_interest.intersection(genes_affected_by_variant)
+            if genes_in_intersection:
+                tsv_mutations_filtered.loc[idx,tsv_mutations_filtered.columns] = row
+                tsv_mutations_filtered.loc[idx,"Gene Name"] = "&".join(genes_in_intersection)
+                idx += 1
+            else:
+                print(f"<I> variant_interpreation:  no gene if interest in row: {row}")
+        tsv_mutations = tsv_mutations_filtered.reset_index(drop=True)        
+        number_of_entries_after_filter = len(tsv_mutations.index)
+        if verbose:
+            print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after gene filtering = {number_of_entries_after_filter}")
+        
     # If no antimicrobial information, take antimicrobial information for this range (gene)
     # Note: this could be a comma separated list of chemicals
     for index, row in tsv_mutations.iterrows():
@@ -475,28 +496,6 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # check if they have mutations,
     # is not in genes_with_mutations ==> no mutations, i.e. WT
     # manufacture default row for output dataframe
-
-    # keep only genes of interest
-    # since "Gene_Name" can be a &-separated list use sets and calculate intersection
-    if filter_genes:
-        tsv_mutations_filtered = pandas.DataFrame(columns=list(tsv_mutations.columns))
-        genes_of_interest = set(coverage_average.keys())
-        number_of_entries = len(tsv_mutations.index)
-        idx = 0
-        for _, row in tsv_mutations.iterrows():
-            genes_affected_by_variant = set(row["Gene Name"].split("&"))
-            genes_in_intersection = genes_of_interest.intersection(genes_affected_by_variant)
-            if genes_in_intersection:
-                tsv_mutations_filtered.loc[idx,tsv_mutations_filtered.columns] = row
-                tsv_mutations_filtered.loc[idx,"Gene Name"] = "&".join(genes_in_intersection)
-                idx += 1
-            else:
-                print(f"<I> variant_interpreation:  no gene if interest in row: {row}")
-        tsv_mutations = tsv_mutations_filtered.reset_index(drop=True)        
-        number_of_entries_after_filter = len(tsv_mutations.index)
-        if verbose:
-            print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after gene filtering = {number_of_entries_after_filter}")
-        
     # manufacture default rows for genes with no mutations and add them
     tsv_no_mutations = pandas.DataFrame(columns=list(tsv_mutations.columns))
     index = 0
@@ -642,4 +641,5 @@ if __name__ == "__main__":
 
         # get interpretation
         tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_large_deletions, args.minimum_allele_percentage, args.minimum_total_depth, args.minimum_variant_depth, args.filter_genes, args.verbose)
-        tsv_final.to_csv(args.report, index=False, sep="\t")
+        #tsv_final.to_csv(args.report, index=False, sep="\t")
+        tsv_final.to_csv(args.report, index=False)
