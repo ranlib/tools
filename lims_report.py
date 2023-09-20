@@ -107,7 +107,7 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     return "; ".join(chem_gene_eval)
 
 
-def lims_report(lab_tsv: str, lineage_name: str, operator: str) -> pandas.DataFrame():
+def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.DataFrame():
     """
     create LIMS report
     """
@@ -226,7 +226,7 @@ def lims_report(lab_tsv: str, lineage_name: str, operator: str) -> pandas.DataFr
         "antimicrobial",
         "mdl_LIMSfinal",
     ]
-    lab = pandas.read_csv(lab_tsv, sep="\t", usecols=lab_cols)
+    lab = pandas.read_csv(lab_report, usecols=lab_cols)
     lab.columns = lab.columns.str.replace(" ", "_")
 
     # consider only genes of interest for LIMS report, see gene_drug_to_column dictionary hard coded above
@@ -285,10 +285,10 @@ def lims_report(lab_tsv: str, lineage_name: str, operator: str) -> pandas.DataFr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="lims report", prog="lims_report", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
-    parser.add_argument("--lab", "-l", type=argparse.FileType("r"), dest="lab", help="input lab tsv report", required=True)
+    parser.add_argument("--lab", "-l", type=argparse.FileType("r"), dest="lab", help="input lab csv report", required=True)
     parser.add_argument("--operator", "-o", type=str, dest="operator", help="input operator name", required=True)
     parser.add_argument("--lineages", "-s", type=argparse.FileType("r"), dest="lineages", help="input lineage tsv file", nargs="?")
-    parser.add_argument("--lims", "-r", type=argparse.FileType("w"), dest="lims", help="output lims tsv report", required=True)
+    parser.add_argument("--lims", "-r", type=argparse.FileType("w"), dest="lims", help="output lims csv report", required=True)
     parser.add_argument("--log_level", "-d", type=str, dest="log_level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help="logging level")
     args = parser.parse_args()
 
@@ -305,5 +305,4 @@ if __name__ == "__main__":
 
     # create LIMS report
     df = lims_report(args.lab, lineage, args.operator)
-    #df.to_csv(args.lims, sep="\t", index=False)
     df.to_csv(args.lims, index=False)
