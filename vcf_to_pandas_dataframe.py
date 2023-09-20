@@ -55,92 +55,91 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
         #        continue
 
         info = record.INFO
-        if "ANN" not in info:
-            print(f"<I> vcf_to_pandas_dataframe: variant with no annotation {vcf_item}")
+        if not (("ANN" in info) and (len(info["ANN"]) > 0)):
+            annotation_item = dict(zip(annotation_keys, list(range(len(annotation_keys)))))
+            annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = [-1, -1]
+            annotation_item["CDS.pos"], annotation_item["CDS.length"] = [-1, -1]
+            annotation_item["AA.pos"], annotation_item["AA.length"] = [-1, -1]
+            annotation_item["Total Read Depth"] = -1
+            annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
+            annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
         else:
-            if len(info["ANN"]) == 0:
-                annotation_item = dict(zip(annotation_keys, list(range(len(annotation_keys)))))
-                annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = [-1, -1]
-                annotation_item["CDS.pos"], annotation_item["CDS.length"] = [-1, -1]
-                annotation_item["AA.pos"], annotation_item["AA.length"] = [-1, -1]
-                annotation_item["Total Read Depth"] = -1
-                annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
-                annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
+            # check first entry in annotation list
+            item = info["ANN"][0]
+            annotation_item = dict(zip(annotation_keys, item.split("|")))
+
+            # if first entry in annotation list is modifier then look for the closest annotation
+            is_modifier = annotation_item["Annotation_Impact"] == "MODIFIER"
+
+            is_SV = False
+            if "SVTYPE" in info:
+                is_SV = True
+
+            #is_large_deletion = "<DEL>" in vcf_item["ALT"]
+            #if is_modifier and not is_large_deletion:
+            if is_modifier and not is_SV:
+                # print(annotation_item)
+                distances = []
+                annotation_item_list = []
+                for annotation in info["ANN"]:
+                    annotation_item = dict(zip(annotation_keys, annotation.split("|")))
+                    annotation_item_list.append(annotation_item)
+                    distances.append(annotation_item["Distance"])
+
+                distances.remove("")
+                distances = list(map(int, distances))
+                # closest_distance = min(distances)
+                closest_index = distances.index(min(distances))
+                annotation_item = annotation_item_list[closest_index]
+
+            cDNA = annotation_item["cDNA.pos / cDNA.length"].split("/")
+            CDS = annotation_item["CDS.pos / CDS.length"].split("/")
+            AA = annotation_item["AA.pos / AA.length"].split("/")
+
+            annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = [-1, -1]
+            annotation_item["CDS.pos"], annotation_item["CDS.length"] = [-1, -1]
+            annotation_item["AA.pos"], annotation_item["AA.length"] = [-1, -1]
+
+            if len(cDNA) == 2:
+                annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = list(map(int, cDNA))
+
+            if len(CDS) == 2:
+                annotation_item["CDS.pos"], annotation_item["CDS.length"] = list(map(int, CDS))
+
+            if len(AA) == 2:
+                annotation_item["AA.pos"], annotation_item["AA.length"] = list(map(int, AA))
+
+            the_call = record.genotype(samplename)
+
+            is_precise_SV = None
+            if is_SV and "PRECISE" in info:
+                is_precise_SV = True
             else:
-                # check first entry in annotation list
-                item = info["ANN"][0]
-                annotation_item = dict(zip(annotation_keys, item.split("|")))
+                is_precise_SV = False
 
-                # if first entry in annotation list is modifier then look for the closest annotation
-                is_modifier = annotation_item["Annotation_Impact"] == "MODIFIER"
-                is_large_deletion = "<DEL>" in vcf_item["ALT"]
-                if is_modifier and not is_large_deletion:
-                    # print(annotation_item)
-                    distances = []
-                    annotation_item_list = []
-                    for annotation in info["ANN"]:
-                        annotation_item = dict(zip(annotation_keys, annotation.split("|")))
-                        annotation_item_list.append(annotation_item)
-                        distances.append(annotation_item["Distance"])
+            if hasattr(the_call.data, "DP"):
+                annotation_item["Total Read Depth"] = record.genotype(samplename)["DP"]
+            elif hasattr(the_call.data,"DR") and hasattr(the_call.data,"DV") and not is_precise_SV:
+                annotation_item["Total Read Depth"] = record.genotype(samplename)["DR"] + record.genotype(samplename)["DV"]
+            elif hasattr(the_call.data,"RR") and hasattr(the_call.data,"RV") and is_precise_SV:
+                annotation_item["Total Read Depth"] = record.genotype(samplename)["RR"] + record.genotype(samplename)["RV"]
+            else:
+                annotation_item["Total Read Depth"] = -1
 
-                    distances.remove("")
-                    distances = list(map(int, distances))
-                    # closest_distance = min(distances)
-                    closest_index = distances.index(min(distances))
-                    annotation_item = annotation_item_list[closest_index]
+            if hasattr(the_call.data, "AD"):
+                annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = record.genotype(samplename)["AD"]
+            elif hasattr(the_call.data,"DV") and hasattr(the_call.data,"DV") and not is_precise_SV:
+                annotation_item["AD_REF"] = record.genotype(samplename)["DR"]
+                annotation_item["Variant Read Depth"] = record.genotype(samplename)["DV"]
+            elif hasattr(the_call.data,"RV") and hasattr(the_call.data,"RV") and is_precise_SV:
+                annotation_item["AD_REF"] = record.genotype(samplename)["RR"]
+                annotation_item["Variant Read Depth"] = record.genotype(samplename)["RV"]
+            else:
+                annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
 
-                cDNA = annotation_item["cDNA.pos / cDNA.length"].split("/")
-                CDS = annotation_item["CDS.pos / CDS.length"].split("/")
-                AA = annotation_item["AA.pos / AA.length"].split("/")
-
-                annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = [-1, -1]
-                annotation_item["CDS.pos"], annotation_item["CDS.length"] = [-1, -1]
-                annotation_item["AA.pos"], annotation_item["AA.length"] = [-1, -1]
-
-                if len(cDNA) == 2:
-                    annotation_item["cDNA.pos"], annotation_item["cDNA.length"] = list(map(int, cDNA))
-
-                if len(CDS) == 2:
-                    annotation_item["CDS.pos"], annotation_item["CDS.length"] = list(map(int, CDS))
-
-                if len(AA) == 2:
-                    annotation_item["AA.pos"], annotation_item["AA.length"] = list(map(int, AA))
-
-                the_call = record.genotype(samplename)
-
-                is_SV = False
-                if "SVTYPE" in info:
-                    is_SV = True
-
-                is_precise_SV = None
-                if is_SV and "PRECISE" in info:
-                    is_precise_SV = True
-                else:
-                    is_precise_SV = False
-                
-                if hasattr(the_call.data, "DP"):
-                    annotation_item["Total Read Depth"] = record.genotype(samplename)["DP"]
-                elif hasattr(the_call.data,"DR") and hasattr(the_call.data,"DV") and not is_precise_SV:
-                    annotation_item["Total Read Depth"] = record.genotype(samplename)["DR"] + record.genotype(samplename)["DV"]
-                elif hasattr(the_call.data,"RR") and hasattr(the_call.data,"RV") and is_precise_SV:
-                    annotation_item["Total Read Depth"] = record.genotype(samplename)["RR"] + record.genotype(samplename)["RV"]
-                else:
-                    annotation_item["Total Read Depth"] = -1
-
-                if hasattr(the_call.data, "AD"):
-                    annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = record.genotype(samplename)["AD"]
-                elif hasattr(the_call.data,"DV") and hasattr(the_call.data,"DV") and not is_precise_SV:
-                    annotation_item["AD_REF"] = record.genotype(samplename)["DR"]
-                    annotation_item["Variant Read Depth"] = record.genotype(samplename)["DV"]
-                elif hasattr(the_call.data,"RV") and hasattr(the_call.data,"RV") and is_precise_SV:
-                    annotation_item["AD_REF"] = record.genotype(samplename)["RR"]
-                    annotation_item["Variant Read Depth"] = record.genotype(samplename)["RV"]
-                else:
-                    annotation_item["AD_REF"], annotation_item["Variant Read Depth"] = [-1, -1]
-
-                # annotation_item["Percent Alt Allele"] = record.genotype(samplename)["AF"]
-                annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
-                ANNS.append(vcf_item | annotation_item)
+            # annotation_item["Percent Alt Allele"] = record.genotype(samplename)["AF"]
+            annotation_item["Percent Alt Allele"] = -1 if annotation_item["Total Read Depth"] <= 0 else annotation_item["Variant Read Depth"] * 100.0 / annotation_item["Total Read Depth"]
+            ANNS.append(vcf_item | annotation_item)
 
     #print(i,flush=True)
     # output dataframe
