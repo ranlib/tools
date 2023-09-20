@@ -662,7 +662,7 @@ if __name__ == "__main__":
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
     # vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
-    vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
 
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
