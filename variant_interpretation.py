@@ -21,6 +21,12 @@ severity = {
     "susceptible-interim": "S - interim",
 }
 
+def region_coverage_qc(row: []) -> str:
+    if row["Annotation"] == "feature_ablation":
+        return "PASS"
+    else:
+        return "FAIL" if row["percent_above_threshold"] < 100.0 else "PASS"
+    
 def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
     """
     variant QC
@@ -581,7 +587,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final = tsv_final.reset_index(drop=True)
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final["percent_above_threshold"].map(lambda x: "FAIL" if x < 100.0 else "PASS"))
+    #tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final["percent_above_threshold"].map(lambda x: "FAIL" if x < 100.0 else "PASS"))
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(lambda row: region_coverage_qc(row), axis=1) )
 
     # create new column "Variant_QC"
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
