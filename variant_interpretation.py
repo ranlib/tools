@@ -22,11 +22,14 @@ severity = {
 }
 
 def region_coverage_qc(row: []) -> str:
+    """
+    region coverage QC
+    """
     if row["Annotation"] == "feature_ablation":
         return "PASS"
-    else:
-        return "FAIL" if row["percent_above_threshold"] < 100.0 else "PASS"
-    
+
+    return "FAIL" if row["percent_above_threshold"] < 100.0 else "PASS"
+
 def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
     """
     variant QC
@@ -306,20 +309,47 @@ def get_interpretation_2_2_2(cds_position: int, annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def get_interpretation_3_2(annotation: str) -> list[str]:
+# def get_interpretation_3_2_2(annotation: str) -> list[str]:
+#     """
+#     implementation of interpretation according to 3.2.2
+#     :param str annotation: drug annotation
+#     :return: list with 2 strings
+#     """
+#     is_synonymous = annotation == "synonymous_variant"
+#     is_nonsynonymous = annotation != "synonymous_variant"
+#     looker = mdl = ""
+#     if is_synonymous:
+#         looker = mdl = "S"
+#     if is_nonsynonymous:
+#         looker = "U"
+#         mdl = "S"
+#     return [looker, mdl]
+
+
+def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[str]:
     """
-    implementation of interpretation according to 3.2
-    :param str annotation: filename of json file wit drug annotation
-    :return: list with 2 strings
+    implementation of interpretation according to 3.2.2
+    :param str annotation: drug annotation
+    :param str nucleotide_change: nucleotide change
+    :return: list of 2 strings
     """
     is_synonymous = annotation == "synonymous_variant"
     is_nonsynonymous = annotation != "synonymous_variant"
+    is_short_deletion = is_large_deletion = False
+    if "del" in nucleotide_change:
+        if len(nucleotide_change.split("del")[1]) in pandas.Interval(0,50,closed='neither'):
+            is_short_deletion = True
+        else:
+            is_large_deletion = True
     looker = mdl = ""
     if is_synonymous:
         looker = mdl = "S"
-    if is_nonsynonymous:
+    if is_nonsynonymous or (annotation == "upstream_gene_variant" and is_short_deletion):
         looker = "U"
         mdl = "S"
+    if is_nonsynonymous or (annotation == "upstream_gene_variant" and is_large_deletion):
+        looker = "U"
+        mdl = "U"
     return [looker, mdl]
 
 
@@ -414,27 +444,31 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_mutations["average_coverage_in_region"] = [0] * len(tsv_mutations.index)
     tsv_mutations["percent_above_threshold"] = [0] * len(tsv_mutations.index)
 
-    # keep only genes of interest
     # since "Gene_Name" can be a &-separated list use sets and calculate intersection
-    if filter_genes:
-        tsv_mutations_filtered = pandas.DataFrame(columns=list(tsv_mutations.columns))
-        genes_of_interest = set(coverage_average.keys())
-        number_of_entries = len(tsv_mutations.index)
-        idx = 0
-        for _, row in tsv_mutations.iterrows():
-            genes_affected_by_variant = set(row["Gene Name"].split("&"))
-            genes_in_intersection = genes_of_interest.intersection(genes_affected_by_variant)
-            if genes_in_intersection:
+    # keep only genes of interest
+    # if intersection empty keep or skip row depending in filter_genes flag
+    tsv_mutations_filtered = pandas.DataFrame(columns=list(tsv_mutations.columns))
+    genes_of_interest = set(coverage_average.keys())
+    number_of_entries = len(tsv_mutations.index)
+    idx = 0
+    for _, row in tsv_mutations.iterrows():
+        genes_affected_by_variant = set(row["Gene Name"].split("&"))
+        genes_in_intersection = genes_of_interest.intersection(genes_affected_by_variant)
+        if genes_in_intersection:
+            tsv_mutations_filtered.loc[idx,tsv_mutations_filtered.columns] = row
+            tsv_mutations_filtered.loc[idx,"Gene Name"] = "&".join(genes_in_intersection)
+            idx += 1
+        else:
+            if not filter_genes:
                 tsv_mutations_filtered.loc[idx,tsv_mutations_filtered.columns] = row
-                tsv_mutations_filtered.loc[idx,"Gene Name"] = "&".join(genes_in_intersection)
                 idx += 1
-            else:
-                print(f"<I> variant_interpreation:  no gene if interest in row: {row}")
-        tsv_mutations = tsv_mutations_filtered.reset_index(drop=True)        
-        number_of_entries_after_filter = len(tsv_mutations.index)
-        if verbose:
-            print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after gene filtering = {number_of_entries_after_filter}")
-        
+            if verbose:
+                print(f"<I> variant_interpretation:  no gene if interest in row: {row}")
+    tsv_mutations = tsv_mutations_filtered.reset_index(drop=True)
+    number_of_entries_after_filter = len(tsv_mutations.index)
+    if verbose:
+        print(f"<I> variant_interpretation: number of entries = {number_of_entries}, after gene filtering = {number_of_entries_after_filter}")
+
     # If no antimicrobial information, take antimicrobial information for this range (gene)
     # Note: this could be a comma separated list of chemicals
     for index, row in tsv_mutations.iterrows():
@@ -510,11 +544,11 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.1"
                 else:
                     # 3.2.2
-                    looker, mdl = get_interpretation_3_2(row["Annotation"])
+                    looker, mdl = get_interpretation_3_2_2(row["Annotation"], row["Nucleotide Change"])
                     tsv_mutations.loc[index, "looker"] = looker
                     tsv_mutations.loc[index, "mdl"] = mdl
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
-                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2"
+                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
 
     # 4.
     # loop over genes of interest,
@@ -588,7 +622,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
     #tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final["percent_above_threshold"].map(lambda x: "FAIL" if x < 100.0 else "PASS"))
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(lambda row: region_coverage_qc(row), axis=1) )
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(region_coverage_qc, axis=1) )
 
     # create new column "Variant_QC"
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
@@ -628,7 +662,7 @@ if __name__ == "__main__":
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
     # vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
-    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
 
     if len(vcf_df.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
