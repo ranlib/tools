@@ -344,18 +344,19 @@ def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[st
     looker = mdl = ""
     if is_synonymous:
         looker = mdl = "S"
-    if is_nonsynonymous or (annotation == "upstream_gene_variant" and is_short_deletion):
-        looker = "U"
-        mdl = "S"
-    if is_nonsynonymous or (annotation == "upstream_gene_variant" and is_large_deletion):
-        looker = "U"
-        mdl = "U"
+    if is_nonsynonymous:
+        if is_large_deletion:
+            looker = mdl = "U"
+        else:
+            looker = "U"
+            mdl = "S"
+
     return [looker, mdl]
 
 
 def get_interpretation_3_2_1(position: int) -> list[str]:
     """
-    implementation of interpretation for rrs gene according to 3.2.2
+    implementation of interpretation for rrs gene according to 3.2.1
     :param int position: genomic position in NC_000962.3
     :return: list with 2 strings
     """
