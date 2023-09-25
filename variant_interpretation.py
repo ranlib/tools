@@ -21,6 +21,7 @@ severity = {
     "susceptible-interim": "S - interim",
 }
 
+
 def region_coverage_qc(row: []) -> str:
     """
     region coverage QC
@@ -29,6 +30,7 @@ def region_coverage_qc(row: []) -> str:
         return "PASS"
 
     return "FAIL" if row["percent_above_threshold"] < 100.0 else "PASS"
+
 
 def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
     """
@@ -490,32 +492,32 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
         # 1.
         if row["Gene Name"] in gene_list_1:
             # 1.1
-            if (row["confidence"] != "") & (row["antimicrobial"] != ""):
+            if (row["confidence"] != "") and (row["antimicrobial"] != ""):
                 tsv_mutations.loc[index, "looker"] = looker_1_1[row["confidence"]]
-                tsv_mutations.loc[index, "mdl"] = mdl_1_1[row["confidence"]]
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl_1_1[row["confidence"]]
 
             # 1.2
-            if (row["confidence"] == "") & (row["antimicrobial"] != ""):
+            if (row["confidence"] == "") and (row["antimicrobial"] != ""):
                 looker, mdl = get_interpretation_1_2(row["Gene Name"], row["POS"], row["Position within CDS"], row["Annotation"])
                 tsv_mutations.loc[index, "looker"] = looker
-                tsv_mutations.loc[index, "mdl"] = mdl
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl
                 tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                 tsv_mutations.loc[index, "rationale"] = "expert rule 1.2"
 
         # 2.
         if row["Gene Name"] in gene_list_2:
             # 2.1
-            if (row["confidence"] != "") & (row["antimicrobial"] != ""):
+            if (row["confidence"] != "") and (row["antimicrobial"] != ""):
                 tsv_mutations.loc[index, "looker"] = looker_2_2[row["confidence"]]
-                tsv_mutations.loc[index, "mdl"] = mdl_2_2[row["confidence"]]
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl_2_2[row["confidence"]]
 
             # 2.2 "WHO expert rules"
-            if (row["confidence"] == "") & (row["antimicrobial"] != ""):
+            if (row["confidence"] == "") and (row["antimicrobial"] != ""):
                 # 2.2.1 gene_list_2 without rpoB
                 if row["Gene Name"] in gene_list_3:
                     looker, mdl = get_interpretation_2_2_1(row["Annotation"])
                     tsv_mutations.loc[index, "looker"] = looker
-                    tsv_mutations.loc[index, "mdl"] = mdl
+                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                     tsv_mutations.loc[index, "rationale"] = "expert rule 2.2.1"
 
@@ -523,31 +525,31 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                 if row["Gene Name"] == "rpoB":
                     looker, mdl = get_interpretation_2_2_2(row["Position within CDS"], row["Annotation"])
                     tsv_mutations.loc[index, "looker"] = looker
-                    tsv_mutations.loc[index, "mdl"] = mdl
+                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                     tsv_mutations.loc[index, "rationale"] = "expert rule 2.2.2"
 
         # 3.
         if row["Gene Name"] not in (gene_list_1 + gene_list_2):
             # 3.1
-            if (row["confidence"] != "") & (row["antimicrobial"] != ""):
+            if (row["confidence"] != "") and (row["antimicrobial"] != ""):
                 tsv_mutations.loc[index, "looker"] = looker_3_1[row["confidence"]]
-                tsv_mutations.loc[index, "mdl"] = mdl_3_1[row["confidence"]]
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl_3_1[row["confidence"]]
 
             # 3.2
-            if (row["confidence"] == "") & (row["antimicrobial"] != ""):
+            if (row["confidence"] == "") and (row["antimicrobial"] != ""):
                 # 3.2.1, just rrs
                 if row["Gene Name"] == "rrs":
                     looker, mdl = get_interpretation_3_2_1(row["POS"])
                     tsv_mutations.loc[index, "looker"] = looker
-                    tsv_mutations.loc[index, "mdl"] = mdl
+                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                     tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.1"
                 else:
                     # 3.2.2
                     looker, mdl = get_interpretation_3_2_2(row["Annotation"], row["Nucleotide Change"])
                     tsv_mutations.loc[index, "looker"] = looker
-                    tsv_mutations.loc[index, "mdl"] = mdl
+                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                     tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
 
@@ -588,7 +590,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_no_mutations.loc[index, "average_coverage_in_region"] = average_coverage_in_region
                     tsv_no_mutations.loc[index, "percent_above_threshold"] = percent_above_threshold
                     tsv_no_mutations.loc[index, "looker"] = "S"
-                    tsv_no_mutations.loc[index, "mdl"] = "WT"
+                    tsv_no_mutations.loc[index, "mdl_prelim"] = "WT"
                     index = index + 1
                 else:
                     # 4.2 there is not enough coverage
@@ -612,7 +614,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_no_mutations.loc[index, "average_coverage_in_region"] = average_coverage_in_region
                     tsv_no_mutations.loc[index, "percent_above_threshold"] = percent_above_threshold
                     tsv_no_mutations.loc[index, "looker"] = "Insufficient Coverage"
-                    tsv_no_mutations.loc[index, "mdl"] = "Insufficient Coverage"
+                    tsv_no_mutations.loc[index, "mdl_prelim"] = "Insufficient Coverage"
                     index = index + 1
 
     tsv_final = pandas.concat([tsv_mutations, tsv_no_mutations])
@@ -629,12 +631,9 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
 
     # update severity based on "Variant_QC" and "Breadth_of_coverage_QC"
-    tsv_final["mdl_LIMSfinal"] = tsv_final["mdl"]
+    tsv_final["mdl_LIMSfinal"] = tsv_final["mdl_prelim"]
     tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", "mdl_LIMSfinal"] = "WT"
-    tsv_final.loc[(tsv_final["Breadth_of_coverage_QC"] == "FAIL") & (tsv_final["mdl"] != "R"), "mdl_LIMSfinal"] = "Insufficient Coverage"
-
-    # rename mdl column
-    tsv_final.rename(columns={"mdl": "mdl_prelim"}, inplace=True)
+    tsv_final.loc[(tsv_final["Breadth_of_coverage_QC"] == "FAIL") & (tsv_final["mdl_prelim"] != "R"), "mdl_LIMSfinal"] = "Insufficient Coverage"
 
     return [tsv_final, genes_with_mutations]
 
