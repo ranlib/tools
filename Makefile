@@ -29,8 +29,24 @@
 # copy mdl severity into mdl_LIMSfinal,
 # update that severity bases on variant QC and regions coverage QC
 #
+# v1.1.0
+# revamp filter_genes section: Gene_Name can be &-separated list of genes
+# for large deletions
+# move this section to beginning, so genes with no antimicrobial get
+# antimicrobial set by using chemicals associated with region
+# remove Warning column,
+# set 'Insufficient Coverage' for mdl_LIMSfinal severity if 'Breadth_of_coverage_QC' == FAIL
+# except for variants with mdl severity R
+# go back to old 2.2.1 but with feature_ablation added
+# still check for upstream_gene_variant for is_notsynonymous
+# change to csv report
+#
+# v1.2.0
+# rename function 3_2 to 3_2_2 and update function:
+# 3.2.2: for non-synonymous variants introduce distinction: large deletions vs rest
+#
 variant_interpretation:
-	docker build --no-cache -t dbest/variant_interpretation:v1.0.9 -f Dockerfile.variant_interpretation .
+	docker build --no-cache -t dbest/variant_interpretation:v1.2.0 -f Dockerfile.variant_interpretation .
 	#docker push dbest/variant_interpretation:v1.0.9 # push new version
 	#docker rmi dbest/variant_interpretation:v1.0.7 # remove old version
 
@@ -49,7 +65,6 @@ variant_interpretation:
 # filter out genes in input lab report that are not in the header of
 # the lims report, remove duplicate terms in cells of lims report,
 # turn lims report from tsv into csv file
-
 #
 lims_report:
 	docker build --no-cache -t dbest/lims_report:v1.0.2 -f Dockerfile.lims_report .
