@@ -275,11 +275,6 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
                 logger.debug(chem_gene)
                 lims.loc[0, gene_drug_to_column[(gene, drug)]] = get_gene_drug_evaluation(chem_gene, gene)
 
-    # remove duplicates in ";<blank>" separated string list
-    #for column in lims.columns:
-    #    col = lims.loc[0, column]
-    #    lims.loc[0, column] = "; ".join(list(set(col.split("; "))))
-
     return lims
 
 
