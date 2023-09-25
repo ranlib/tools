@@ -11,25 +11,14 @@ from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 from intersect_vcf_bed import intersect_vcf_bed
 
-severity = {
-    "coverage": "Insufficient Coverage",
-    "wildtype": "WT",
-    "resistant": "R",
-    "resistant-interim": "R - interim",
-    "uncertain": "U",
-    "susceptible": "S",
-    "susceptible-interim": "S - interim",
-}
-
-
-def region_coverage_qc(row: []) -> str:
+def region_coverage_qc(row: [], has_large_deletions: {}) -> str:
     """
     region coverage QC
     """
-    if row["Annotation"] == "feature_ablation":
-        return "PASS"
-
-    return "FAIL" if row["percent_above_threshold"] < 100.0 else "PASS"
+    condition1 = row["Annotation"] == "feature_ablation"
+    condition2 = row["percent_above_threshold"] == 100.0
+    condition3 = has_large_deletions[row["Gene Name"]] if row["Gene Name"] in has_large_deletions else False
+    return "PASS" if condition1 or condition2 or condition3 else "Fail"
 
 
 def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
@@ -567,7 +556,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
             if gene not in genes_with_mutations:
                 average_coverage_in_region = coverage_average[gene] if gene in coverage_average else -1
                 percent_above_threshold = coverage_percentage[gene] if gene in coverage_average else -1
-                has_region_coverage = not( percent_above_threshold < 100.0 )
+                has_region_coverage = percent_above_threshold == 100.0
                 if has_region_coverage or has_large_deletions[gene]:
                     # 4.1 there is coverage
                     # for drug in drug_info[gene].split(","):
@@ -624,8 +613,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final = tsv_final.reset_index(drop=True)
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
-    #tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final["percent_above_threshold"].map(lambda x: "FAIL" if x < 100.0 else "PASS"))
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(region_coverage_qc, axis=1) )
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(lambda row: region_coverage_qc(row, has_large_deletions), axis=1) )
 
     # create new column "Variant_QC"
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
