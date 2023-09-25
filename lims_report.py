@@ -74,30 +74,30 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     annotations = chem_gene["Annotation"].to_list()
     positions_within_cds = chem_gene["Position_within_CDS"].to_list()
 
-    chem_gene_eval = []
-    mut_counter = {"R": 0, "U": 0, "S": 0}
+    chem_gene_eval = set()
+    mutation_counter = {"R": 0, "U": 0, "S": 0}
     for i, severity in enumerate(severities):
         if severity == "R":
-            chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i])
-            mut_counter["R"] += 1
+            chem_gene_eval.add(nt_changes[i] + " " + aa_changes_with_parens[i])
+            mutation_counter["R"] += 1
 
         if severity == "U":
-            chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i])
-            mut_counter["U"] += 1
+            chem_gene_eval.add(nt_changes[i] + " " + aa_changes_with_parens[i])
+            mutation_counter["U"] += 1
 
         if severity == "S":
             if (gene == "rpoB") and (annotations[i] == "synonymous_variant") and (positions_within_cds[i] in RRDR):
-                chem_gene_eval.append(nt_changes[i] + " " + aa_changes_with_parens[i] + "[synonymous]")
-            mut_counter["S"] += 1
+                chem_gene_eval.add(nt_changes[i] + " " + aa_changes_with_parens[i] + "[synonymous]")
+            mutation_counter["S"] += 1
 
         if severity == "WT":
-            chem_gene_eval.append("No mutations detected")
+            chem_gene_eval.add("No mutations detected")
 
         if severity == "Insufficient Coverage":
-            chem_gene_eval.append("No sequence")
+            chem_gene_eval.add("No sequence")
 
-    if (mut_counter["R"] == 0) and (mut_counter["U"] == 0) and (mut_counter["S"] > 0):
-        chem_gene_eval.append("No high confidence mutations detected")
+    if (mutation_counter["R"] == 0) and (mutation_counter["U"] == 0) and (mutation_counter["S"] > 0):
+        chem_gene_eval.add("No high confidence mutations detected")
         if "No mutations detected" in chem_gene_eval:
             chem_gene_eval.remove("No mutations detected")
         # the following should not happen
@@ -276,9 +276,9 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
                 lims.loc[0, gene_drug_to_column[(gene, drug)]] = get_gene_drug_evaluation(chem_gene, gene)
 
     # remove duplicates in ";<blank>" separated string list
-    for column in lims.columns:
-        col = lims.loc[0, column]
-        lims.loc[0, column] = "; ".join(list(set(col.split("; "))))
+    #for column in lims.columns:
+    #    col = lims.loc[0, column]
+    #    lims.loc[0, column] = "; ".join(list(set(col.split("; "))))
 
     return lims
 
