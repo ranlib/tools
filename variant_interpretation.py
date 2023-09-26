@@ -11,14 +11,13 @@ from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 from intersect_vcf_bed import intersect_vcf_bed
 
-def region_coverage_qc(row: [], has_large_deletions: {}) -> str:
+def region_coverage_qc(row: [], has_deletions: {}) -> str:
     """
     region coverage QC
     """
-    condition1 = row["Annotation"] == "feature_ablation"
-    condition2 = row["percent_above_threshold"] == 100.0
-    condition3 = has_large_deletions[row["Gene Name"]] if row["Gene Name"] in has_large_deletions else False
-    return "PASS" if condition1 or condition2 or condition3 else "Fail"
+    condition1 = row["percent_above_threshold"] == 100.0
+    condition2 = has_deletions[row["Gene Name"]] if row["Gene Name"] in has_deletions else False
+    return "PASS" if condition1 or condition2 else "FAIL"
 
 
 def variant_qc(row: [], minimum_allele_percentage: float, minimum_total_depth: int, minimum_variant_depth: int) -> str:
@@ -96,13 +95,13 @@ looker_1_1 = {
 mdl_1_1 = {
     "": "no WHO confidence",
     "Assoc w R": "R",
-    "Assoc w R - interim": "U",
+    "Assoc w R - interim": "R",
     "Not assoc w R": "S",
-    "Not assoc w R - Interim": "U",
+    "Not assoc w R - Interim": "S",
     "Uncertain significance": "U",
 }
 
-looker_2_2 = {
+looker_2_1 = {
     "": "no WHO confidence",
     "Assoc w R": "R",
     "Assoc w R - interim": "R - interim",
@@ -111,13 +110,13 @@ looker_2_2 = {
     "Uncertain significance": "U",
 }
 
-mdl_2_2 = {
+mdl_2_1 = {
     "": "no WHO confidence",
     "Assoc w R": "R",
-    "Assoc w R - interim": "U",
+    "Assoc w R - interim": "R",
     "Not assoc w R": "S",
     "Not assoc w R - Interim": "S",
-    "Uncertain significance": "S",
+    "Uncertain significance": "U",
 }
 
 looker_3_1 = {
@@ -132,10 +131,10 @@ looker_3_1 = {
 mdl_3_1 = {
     "": "no WHO confidence",
     "Assoc w R": "R",
-    "Assoc w R - interim": "U",
+    "Assoc w R - interim": "R",
     "Not assoc w R": "S",
     "Not assoc w R - Interim": "S",
-    "Uncertain significance": "S",
+    "Uncertain significance": "U",
 }
 
 
@@ -300,6 +299,20 @@ def get_interpretation_2_2_2(cds_position: int, annotation: str) -> list[str]:
     return [looker, mdl]
 
 
+def get_interpretation_3_2_1(position: int) -> list[str]:
+    """
+    implementation of interpretation for rrs gene according to 3.2.1
+    :param int position: genomic position in NC_000962.3
+    :return: list with 2 strings
+    """
+    if position in [1473246, 1473247, 1473329]:
+        looker = mdl = "U"
+    else:
+        looker = "U"
+        mdl = "S"
+    return [looker, mdl]
+
+
 # def get_interpretation_3_2_2(annotation: str) -> list[str]:
 #     """
 #     implementation of interpretation according to 3.2.2
@@ -342,20 +355,6 @@ def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[st
             looker = "U"
             mdl = "S"
 
-    return [looker, mdl]
-
-
-def get_interpretation_3_2_1(position: int) -> list[str]:
-    """
-    implementation of interpretation for rrs gene according to 3.2.1
-    :param int position: genomic position in NC_000962.3
-    :return: list with 2 strings
-    """
-    if position in [1473246, 1473247, 1473329]:
-        looker = mdl = "U"
-    else:
-        looker = "U"
-        mdl = "S"
     return [looker, mdl]
 
 
@@ -427,7 +426,7 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
     return tsv_out
 
 
-def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_large_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int, filter_genes: bool, verbose: bool):
+def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage: {}, coverage_average: {}, has_deletions: {}, minimum_allele_percentage: int, minimum_total_depth: int, minimum_variant_depth: int, filter_genes: bool, verbose: bool):
     """
     interpretation
     """
@@ -497,8 +496,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
         if row["Gene Name"] in gene_list_2:
             # 2.1
             if (row["confidence"] != "") and (row["antimicrobial"] != ""):
-                tsv_mutations.loc[index, "looker"] = looker_2_2[row["confidence"]]
-                tsv_mutations.loc[index, "mdl_prelim"] = mdl_2_2[row["confidence"]]
+                tsv_mutations.loc[index, "looker"] = looker_2_1[row["confidence"]]
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl_2_1[row["confidence"]]
 
             # 2.2 "WHO expert rules"
             if (row["confidence"] == "") and (row["antimicrobial"] != ""):
@@ -557,8 +556,8 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                 average_coverage_in_region = coverage_average[gene] if gene in coverage_average else -1
                 percent_above_threshold = coverage_percentage[gene] if gene in coverage_average else -1
                 has_region_coverage = percent_above_threshold == 100.0
-                if has_region_coverage or has_large_deletions[gene]:
-                    # 4.1 there is coverage
+                if has_region_coverage or has_deletions[gene]:
+                    # 4.1 there is 100% region coverage or deletion
                     # for drug in drug_info[gene].split(","):
                     # tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
                     tsv_no_mutations.loc[index, "Sample ID"] = sample
@@ -582,7 +581,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
                     tsv_no_mutations.loc[index, "mdl_prelim"] = "WT"
                     index = index + 1
                 else:
-                    # 4.2 there is not enough coverage
+                    # 4.2 there is not enough region coverage
                     # for drug in drug_info[gene].split(","):
                     # tsv_no_mutations.loc[index, tsv_no_mutations.columns] = ["N/A"] * len(tsv_no_mutations.columns)
                     tsv_no_mutations.loc[index, "Sample ID"] = sample
@@ -613,7 +612,7 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     tsv_final = tsv_final.reset_index(drop=True)
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
-    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(lambda row: region_coverage_qc(row, has_large_deletions), axis=1) )
+    tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(lambda row: region_coverage_qc(row, has_deletions), axis=1) )
 
     # create new column "Variant_QC"
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Variant_QC", tsv_final.apply(lambda row: variant_qc(row, minimum_allele_percentage, minimum_total_depth, minimum_variant_depth), axis=1))
@@ -675,10 +674,10 @@ if __name__ == "__main__":
         coverage_average = dict(zip(gene_coverage.gene, gene_coverage.average_coverage))
         # gene_coverage.to_csv("gene_coverage.tsv",index=False,sep="\t")
 
-        # check which regions contain large deletions
-        has_large_deletions = get_deletions_in_region(args.vcf.name, args.bed.name)
+        # check which regions contain deletions
+        has_deletions = get_deletions_in_region(args.vcf.name, args.bed.name)
 
         # get interpretation
-        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_large_deletions, args.minimum_allele_percentage, args.minimum_total_depth, args.minimum_variant_depth, args.filter_genes, args.verbose)
+        tsv_final, genes_with_mutations = run_interpretation(tsv_out, drug_info, coverage_percentage, coverage_average, has_deletions, args.minimum_allele_percentage, args.minimum_total_depth, args.minimum_variant_depth, args.filter_genes, args.verbose)
         #tsv_final.to_csv(args.report, index=False, sep="\t")
         tsv_final.to_csv(args.report, index=False)
