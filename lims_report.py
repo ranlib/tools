@@ -100,10 +100,11 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
         chem_gene_eval.add("No high confidence mutations detected")
         if "No mutations detected" in chem_gene_eval:
             chem_gene_eval.remove("No mutations detected")
-        # the following should not happen
-        #if "No sequence" in chem_gene_eval:
-        #    chem_gene_eval.remove("No sequence")
 
+    if (mutation_counter["R"] + mutation_counter["U"] + mutation_counter["S"]) > 0:
+        if "No mutations detected" in chem_gene_eval:
+            chem_gene_eval.remove("No mutations detected")
+            
     return "; ".join(chem_gene_eval)
 
 
