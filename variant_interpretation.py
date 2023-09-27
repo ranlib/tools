@@ -11,6 +11,10 @@ from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 from intersect_vcf_bed import intersect_vcf_bed
 
+def get_deletion_status(row: [], has_deletions: {}) -> bool:
+    return has_deletions[row["Gene Name"]] if row["Gene Name"] in has_deletions else False
+    
+    
 def region_coverage_qc(row: [], has_deletions: {}) -> str:
     """
     region coverage QC
@@ -610,6 +614,9 @@ def run_interpretation(tsv: pandas.DataFrame, drug_info: {}, coverage_percentage
     # break up rows with "," separated list of anti_microbials into several rows
     tsv_final = tsv_final.assign(antimicrobial=tsv_final["antimicrobial"].str.split(",")).explode("antimicrobial")
     tsv_final = tsv_final.reset_index(drop=True)
+
+    # create new column deletion status to check whether mutation in region with deletion
+    #tsv_final.insert(tsv_final.columns.get_loc("looker"), "Deletion_status", tsv_final.apply(lambda row: get_deletion_status(row, has_deletions), axis=1) )
 
     # create new column "Breadth_of_coverage_QC" based on region coverage
     tsv_final.insert(tsv_final.columns.get_loc("looker"), "Breadth_of_coverage_QC", tsv_final.apply(lambda row: region_coverage_qc(row, has_deletions), axis=1) )
