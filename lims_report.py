@@ -97,13 +97,11 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
             chem_gene_eval.add("No sequence")
 
     if (mutation_counter["R"] == 0) and (mutation_counter["U"] == 0) and (mutation_counter["S"] > 0):
-        chem_gene_eval.add("No high confidence mutations detected")
-        if "No mutations detected" in chem_gene_eval:
-            chem_gene_eval.remove("No mutations detected")
+        chem_gene_eval = set(["No high confidence mutations detected"])
 
+    discard_elements = set(["No mutations detected", "No sequence"])
     if (mutation_counter["R"] + mutation_counter["U"] + mutation_counter["S"]) > 0:
-        if "No mutations detected" in chem_gene_eval:
-            chem_gene_eval.remove("No mutations detected")
+        chem_gene_eval = chem_gene_eval - discard_elements
             
     return "; ".join(chem_gene_eval)
 
