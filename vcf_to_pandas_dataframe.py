@@ -49,10 +49,9 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
         #print(i, record, flush=True)
         i += 1
         
-        #if filter_variants:
-        #    if record.FILTER:
-        #        print(f"<W> vcf_to_pandas_dataframe: filter out variant {record} with filter column entry {record.FILTER}")
-        #        continue
+        if filter_variants and record.FILTER:
+            print(f"<W> vcf_to_pandas_dataframe: filter out variant {record} with filter column entry {record.FILTER}")
+            continue
 
         info = record.INFO
         if not (("ANN" in info) and (len(info["ANN"]) > 0)):
@@ -165,8 +164,8 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
     df = df.drop(forget_this, axis=1)
     df = df.drop(df.columns[df.columns.str.contains("ERRORS / WARNINGS / INFO")], axis=1)
     # rename some columns
-    new_names = {"Gene_Name": "Gene Name", "Gene_ID": "Gene ID", "HGVS.c": "Nucleotide Change", "HGVS.p": "Amino acid Change", "CDS.pos": "Position within CDS"}
-    df = df.rename(columns=new_names)
+    #new_names = {"Gene_Name": "Gene Name", "Gene_ID": "Gene ID", "HGVS.c": "Nucleotide Change", "HGVS.p": "Amino acid Change", "CDS.pos": "Position within CDS"}
+    #df = df.rename(columns=new_names)
     return df
 
 
