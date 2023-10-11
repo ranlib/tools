@@ -233,7 +233,8 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
     # i.e. weed out genes that are not reportable
     genes_reportable = {key[0] for key in list(gene_drug_to_column.keys())}
     lab = lab[lab["Gene_Name"].isin(genes_reportable)]
-
+    lab = lab.reset_index(drop=True)
+        
     # mdl = category, determine sort order according to severity
     # sort by severity, keep only most severe
     lab["mdl_LIMSfinal"] = pandas.Categorical(lab["mdl_LIMSfinal"], ["R", "Insufficient Coverage", "U", "S", "WT"])
