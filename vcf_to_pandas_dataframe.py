@@ -161,11 +161,13 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
         "AA.length",
         "AD_REF",
     ]
-    df = df.drop(forget_this, axis=1)
+    #df = df.drop(forget_this, axis=1)
     df = df.drop(df.columns[df.columns.str.contains("ERRORS / WARNINGS / INFO")], axis=1)
     # rename some columns
     #new_names = {"Gene_Name": "Gene Name", "Gene_ID": "Gene ID", "HGVS.c": "Nucleotide Change", "HGVS.p": "Amino acid Change", "CDS.pos": "Position within CDS"}
     #df = df.rename(columns=new_names)
+    df['Distance'] = df['Distance'].replace(to_replace="",value="-1")
+    df["Distance"] = df['Distance'].astype(int)
     return df
 
 
