@@ -288,6 +288,8 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
 def get_interpretation_2_2_1(annotation: str, distance: int) -> list[str]:
     """
     implementation of interpretation according to 2.2.1
+    :param int position: genomic position in NC_000962.3
+    :return: list with 2 strings
     """
     is_synonymous = annotation == "synonymous_variant"
     is_nonsynonymous = annotation != "synonymous_variant"
@@ -308,6 +310,8 @@ def get_interpretation_2_2_1(annotation: str, distance: int) -> list[str]:
 def get_interpretation_2_2_2(AA_position: int, annotation: str) -> list[str]:
     """
     implementation of interpretation according to 2.2.2
+    :param int AA_position: position in amino acid sequence
+    :return: list with 2 strings
     """
     is_synonymous = annotation == "synonymous_variant"
     is_nonsynonymous = annotation != "synonymous_variant"
@@ -385,30 +389,30 @@ def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[st
 
     return [looker, mdl]
 
-def get_interpretation_3_2_2_1(annotation: str, position: int) -> list[str]:
+def get_interpretation_3_2_2_1(annotation: str, AA_position: int) -> list[str]:
     """
     implementation of interpretation according to 3.2.2.1
     :param str annotation: drug annotation
-    :param int position: position within coding sequence
+    :param int position: position within AA sequence
     :return: list of 2 strings
     """
     is_nonsynonymous = annotation != "synonymous_variant"
     looker = mdl = ""
-    if is_nonsynonymous and position in pandas.Interval(88, 94, closed="both"):
+    if is_nonsynonymous and AA_position in pandas.Interval(88, 94, closed="both"):
         looker = mdl = "U"
     return [looker, mdl]
 
 
-def get_interpretation_3_2_2_2(annotation: str, position: int) -> list[str]:
+def get_interpretation_3_2_2_2(annotation: str, AA_position: int) -> list[str]:
     """
     implementation of interpretation according to 3.2.2.2
     :param str annotation: drug annotation
-    :param int position: position within coding sequence
+    :param int position: position in AA sequence
     :return: list of 2 strings
     """
     is_nonsynonymous = annotation != "synonymous_variant"
     looker = mdl = ""
-    if is_nonsynonymous and position in pandas.Interval(446, 507, closed="both"):
+    if is_nonsynonymous and AA_position in pandas.Interval(446, 507, closed="both"):
         looker = mdl = "U"
     return [looker, mdl]
 
