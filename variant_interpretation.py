@@ -107,7 +107,11 @@ def get_intervals(regions: pandas.DataFrame):
             rpoB_AA_region = Interval(426, 452)
 
 
-gene_list_1 = ["Rv0678", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
+#gene_list_1 = ["Rv0678", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
+
+gene_list_1 = ["atpE", "pepQ", "rrl", "rplC"]
+gene_list_4 = ["Rv0678", "mmpL5", "mmpS5"]
+
 gene_list_2 = ["katG", "pncA", "ethA", "gid", "rpoB"]
 gene_list_3 = ["katG", "pncA", "ethA", "gid"]
 
@@ -560,6 +564,20 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                 tsv_mutations.loc[index, "rationale"] = "expert rule 1.2"
 
+        if row["Gene_Name"] in gene_list_4: 
+            # 1.1
+            if (row["confidence"] == "Assoc w R") and (row["antimicrobial"] != ""):
+                tsv_mutations.loc[index, "looker"] = looker_1_1[row["confidence"]]
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl_1_1[row["confidence"]]
+
+            # 1.2
+            if (row["confidence"] != "Assoc w R") and (row["antimicrobial"] != ""):
+                looker, mdl = get_interpretation_1_2(row["Gene_Name"], row["POS"], row["CDS.pos"], row["Annotation"])
+                tsv_mutations.loc[index, "looker"] = looker
+                tsv_mutations.loc[index, "mdl_prelim"] = mdl
+                tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                tsv_mutations.loc[index, "rationale"] = "expert rule 1.2"
+
         # 2.
         if row["Gene_Name"] in gene_list_2:
             # 2.1
@@ -586,7 +604,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                     tsv_mutations.loc[index, "rationale"] = "expert rule 2.2.2"
 
         # 3.
-        if row["Gene_Name"] not in (gene_list_1 + gene_list_2):
+        if row["Gene_Name"] not in (gene_list_1 + gene_list_4 + gene_list_2):
             # 3.1
             if (row["confidence"] != "") and (row["antimicrobial"] != ""):
                 tsv_mutations.loc[index, "looker"] = looker_3_1[row["confidence"]]
