@@ -67,7 +67,7 @@ def get_intervals(regions: pandas.DataFrame):
     """
     generate intervals
     """
-    global rpoB_cds_region
+    global rpoB_AA_region
     global mmpS5, mmpL5, rplC, pepQ, atpE, Rv0678
     global Rv0678_promoter, atpE_promoter, pepQ_promoter, rplC_promoter
     global rrl_rRNA_1, rrl_rRNA_1_complement
@@ -104,8 +104,7 @@ def get_intervals(regions: pandas.DataFrame):
             rrl_rRNA_1_complement = rrl_rRNA_1.complement(rrl_rRNA)
 
         if row["gene"] == "rpoB":
-            # position in CDS
-            rpoB_cds_region = Interval(426, 452)
+            rpoB_AA_region = Interval(426, 452)
 
 
 gene_list_1 = ["Rv0678", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
@@ -286,7 +285,7 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
 #     return [looker, mdl]
 
 
-def get_interpretation_2_2_1(annotation: str) -> list[str]:
+def get_interpretation_2_2_1(annotation: str, distance: int) -> list[str]:
     """
     implementation of interpretation according to 2.2.1
     """
@@ -295,7 +294,7 @@ def get_interpretation_2_2_1(annotation: str) -> list[str]:
     # ?
     effect_types = ["feature_ablation", "disruptive_inframe_insertion", "frameshift_variant", "stop_lost", "splice_region_variant", "missense_variant", "upstream_gene_variant", "disruptive_inframe_deletion", "nonsense_variant"]
     looker = mdl = ""
-    if annotation in effect_types:
+    if set(annotation.split("&")).intersection(set(effect_types)) and distance < 30:
         looker = mdl = "U"
     else:
         if is_synonymous:
@@ -306,14 +305,14 @@ def get_interpretation_2_2_1(annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def get_interpretation_2_2_2(cds_position: int, annotation: str) -> list[str]:
+def get_interpretation_2_2_2(AA_position: int, annotation: str) -> list[str]:
     """
     implementation of interpretation according to 2.2.2
     """
     is_synonymous = annotation == "synonymous_variant"
     is_nonsynonymous = annotation != "synonymous_variant"
     looker = mdl = ""
-    if rpoB_cds_region.contains(cds_position):
+    if rpoB_AA_region.contains(AA_position):
         if is_synonymous:
             looker = mdl = "S"
         if is_nonsynonymous:
@@ -384,6 +383,33 @@ def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[st
             looker = "U"
             mdl = "S"
 
+    return [looker, mdl]
+
+def get_interpretation_3_2_2_1(annotation: str, position: int) -> list[str]:
+    """
+    implementation of interpretation according to 3.2.2.1
+    :param str annotation: drug annotation
+    :param int position: position within coding sequence
+    :return: list of 2 strings
+    """
+    is_nonsynonymous = annotation != "synonymous_variant"
+    looker = mdl = ""
+    if is_nonsynonymous and position in pandas.Interval(88, 94, closed="both"):
+        looker = mdl = "U"
+    return [looker, mdl]
+
+
+def get_interpretation_3_2_2_2(annotation: str, position: int) -> list[str]:
+    """
+    implementation of interpretation according to 3.2.2.2
+    :param str annotation: drug annotation
+    :param int position: position within coding sequence
+    :return: list of 2 strings
+    """
+    is_nonsynonymous = annotation != "synonymous_variant"
+    looker = mdl = ""
+    if is_nonsynonymous and position in pandas.Interval(446, 507, closed="both"):
+        looker = mdl = "U"
     return [looker, mdl]
 
 
@@ -462,7 +488,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
     """
     has_deletions = {item[1]: item[2] for item in regions_list}
 
-    header = ["Sample ID", "Gene_Name", "Gene_ID", "POS", "CDS.pos", "HGVS.c", "HGVS.p", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
+    header = ["Sample ID", "Gene_Name", "Gene_ID", "POS", "CDS.pos", "AA.pos", "Distance", "HGVS.c", "HGVS.p", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
     tsv_mutations = tsv.loc[:, header]
 
     # new columns produced here
@@ -541,7 +567,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
             if (row["confidence"] == "") and (row["antimicrobial"] != ""):
                 # 2.2.1 gene_list_2 without rpoB
                 if row["Gene_Name"] in gene_list_3:
-                    looker, mdl = get_interpretation_2_2_1(row["Annotation"])
+                    looker, mdl = get_interpretation_2_2_1(row["Annotation"], row["Distance"])
                     tsv_mutations.loc[index, "looker"] = looker
                     tsv_mutations.loc[index, "mdl_prelim"] = mdl
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
@@ -572,12 +598,24 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                     tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.1"
                 else:
-                    # 3.2.2
-                    looker, mdl = get_interpretation_3_2_2(row["Annotation"], row["HGVS.c"])
-                    tsv_mutations.loc[index, "looker"] = looker
-                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
-                    tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
-                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
+                    is_gyrA = is_gyrB = False
+                    # 3.2.2.1
+                    if row["Gene_Name"] == "gyrA":
+                        looker, mdl = get_interpretation_3_2_2_1(row["Annotation"], row["AA.pos"])
+                        is_gyrA = looker != ""
+                        
+                    # 3.2.2.2
+                    if row["Gene_Name"] == "gyrB":
+                        looker, mdl = get_interpretation_3_2_2_2(row["Annotation"], row["AA.pos"])
+                        is_gyrB = looker != ""
+                        
+                    # 3.2.2.3
+                    if not is_gyrA and not is_gyrB:
+                        looker, mdl = get_interpretation_3_2_2(row["Annotation"], row["HGVS.c"])
+                        tsv_mutations.loc[index, "looker"] = looker
+                        tsv_mutations.loc[index, "mdl_prelim"] = mdl
+                        tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                        tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
 
     # 4.
     # loop over genes of interest,
@@ -601,6 +639,8 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_no_mutations.loc[index, "Gene_ID"] = "N/A"
                 tsv_no_mutations.loc[index, "POS"] = -1
                 tsv_no_mutations.loc[index, "CDS.pos"] = -1
+                tsv_no_mutations.loc[index, "AA.pos"] = -1
+                tsv_no_mutations.loc[index, "Distance"] = -1
                 tsv_no_mutations.loc[index, "HGVS.c"] = "N/A"
                 tsv_no_mutations.loc[index, "HGVS.p"] = "N/A"
                 tsv_no_mutations.loc[index, "Annotation"] = "N/A"
@@ -625,6 +665,8 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_no_mutations.loc[index, "Gene_ID"] = "N/A"
                 tsv_no_mutations.loc[index, "POS"] = -1
                 tsv_no_mutations.loc[index, "CDS.pos"] = -1
+                tsv_no_mutations.loc[index, "AA.pos"] = -1
+                tsv_no_mutations.loc[index, "Distance"] = -1
                 tsv_no_mutations.loc[index, "HGVS.c"] = "N/A"
                 tsv_no_mutations.loc[index, "HGVS.p"] = "N/A"
                 tsv_no_mutations.loc[index, "Annotation"] = "N/A"
