@@ -564,6 +564,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                 tsv_mutations.loc[index, "rationale"] = "expert rule 1.2"
 
+        # 1.3
         if row["Gene_Name"] in gene_list_4: 
             # 1.1
             if (row["confidence"] == "Assoc w R") and (row["antimicrobial"] != ""):
@@ -634,10 +635,11 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                     # 3.2.2.3
                     if not is_gyrA and not is_gyrB:
                         looker, mdl = get_interpretation_3_2_2(row["Annotation"], row["HGVS.c"])
-                        tsv_mutations.loc[index, "looker"] = looker
-                        tsv_mutations.loc[index, "mdl_prelim"] = mdl
-                        tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
-                        tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
+
+                    tsv_mutations.loc[index, "looker"] = looker
+                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
+                    tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
 
     # 4.
     # loop over genes of interest,
@@ -756,10 +758,10 @@ if __name__ == "__main__":
     # vcf -> tsv
     vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
     # vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
-    # vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
 
     if len(vcf_df.index) == 0:
-        print(f"<W> variant_interpretation: no mutations in {args.vcf}, no interpretation report.")
+        print(f"<W> variant_interpretation: no mutations in {args.vcf.name}, no interpretation report.")
     else:
         # get drug annotation
         tsv_out = add_drug_annotation(vcf_df, args.json.name)
