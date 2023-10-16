@@ -300,7 +300,7 @@ def get_interpretation_2_2_1(annotation: str, distance: int) -> list[str]:
     # ?
     effect_types = ["feature_ablation", "disruptive_inframe_insertion", "frameshift_variant", "stop_lost", "splice_region_variant", "missense_variant", "upstream_gene_variant", "disruptive_inframe_deletion", "nonsense_variant"]
     looker = mdl = ""
-    if set(annotation.split("&")).intersection(set(effect_types)) and distance < 30:
+    if set(annotation.split("&")).intersection(set(effect_types)) and distance < 31:
         looker = mdl = "U"
     else:
         if is_synonymous:
@@ -496,7 +496,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
     """
     has_deletions = {item[1]: item[2] for item in regions_list}
 
-    header = ["Sample ID", "Gene_Name", "Gene_ID", "POS", "CDS.pos", "AA.pos", "Distance", "HGVS.c", "HGVS.p", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
+    header = ["Sample ID", "Gene_Name", "Gene_ID", "POS", "CDS.pos", "AA.pos", "Distance", "FILTER", "HGVS.c", "HGVS.p", "Annotation", "confidence", "antimicrobial", "Total Read Depth", "Variant Read Depth", "Percent Alt Allele", "rationale"]
     tsv_mutations = tsv.loc[:, header]
 
     # new columns produced here
@@ -621,25 +621,32 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                     tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                     tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.1"
                 else:
-                    is_gyrA = is_gyrB = False
+                    is_in_gyrA_QRDR_region = is_in_gyrB_QRDR_region = False
                     # 3.2.2.1
                     if row["Gene_Name"] == "gyrA":
                         looker, mdl = get_interpretation_3_2_2_1(row["Annotation"], row["AA.pos"])
-                        is_gyrA = looker != ""
+                        is_in_gyrA_QRDR_region = looker != ""
+                        tsv_mutations.loc[index, "looker"] = looker
+                        tsv_mutations.loc[index, "mdl_prelim"] = mdl
+                        tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                        tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2.1"
                         
                     # 3.2.2.2
                     if row["Gene_Name"] == "gyrB":
                         looker, mdl = get_interpretation_3_2_2_2(row["Annotation"], row["AA.pos"])
-                        is_gyrB = looker != ""
+                        is_in_gyrB_QRDR_region = looker != ""
+                        tsv_mutations.loc[index, "looker"] = looker
+                        tsv_mutations.loc[index, "mdl_prelim"] = mdl
+                        tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                        tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2.2"
                         
                     # 3.2.2.3
-                    if not is_gyrA and not is_gyrB:
+                    if not is_in_gyrA_QRDR_region and not is_in_gyrB_QRDR_region:
                         looker, mdl = get_interpretation_3_2_2(row["Annotation"], row["HGVS.c"])
-
-                    tsv_mutations.loc[index, "looker"] = looker
-                    tsv_mutations.loc[index, "mdl_prelim"] = mdl
-                    tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
-                    tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2"
+                        tsv_mutations.loc[index, "looker"] = looker
+                        tsv_mutations.loc[index, "mdl_prelim"] = mdl
+                        tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+                        tsv_mutations.loc[index, "rationale"] = "expert rule 3.2.2.3"
 
     # 4.
     # loop over genes of interest,
