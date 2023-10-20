@@ -11,6 +11,7 @@ Note: sample name created from fastq file name with the assumption
 that fastq file name has the structure samplename_XXXXX.fastq.gz
 
 """
+import sys
 import os
 import json
 import re
@@ -36,18 +37,20 @@ with open(args.json_template, "r", encoding="ascii") as stream:
     except json.JSONDecodeError as exc:
         print(exc)
 
-R1s = [r for r in files if "_R1_" in r]
+R1s = [r for r in files if "_R1" in r]
 # print(R1s)
-
+if len(R1s) == 0:
+    print(f"<E> length of fastq list = {len(R1s)}")
+    sys.exit(1)
+    
 json_list = []
 for r1 in R1s:
     forward_reads = [r1]
-    reverse_reads = [r1.replace("_R1_", "_R2_")]
+    reverse_reads = [r1.replace("_R1", "_R2")]
     json_template["wf_varpipe.read1"] = forward_reads
     json_template["wf_varpipe.read2"] = reverse_reads
     json_template["wf_varpipe.samplename"] = re.sub("_.*$", "", os.path.basename(r1))
     json_template["wf_varpipe.outdir"] = json_template["wf_varpipe.samplename"]
-    json_template["wf_varpipe.report"] = "variant_interpretation.tsv"
     json_list.append(json_template.copy())
 
 for item in json_list:
