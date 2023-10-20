@@ -5,6 +5,7 @@ Note:
 1) list of chemicals hard coded
 2) list of genes considered/chemical hard coded
 """
+import os
 import argparse
 import datetime
 import logging
@@ -214,20 +215,27 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
         ("rplC", "linezolid"): "M_DST_N03_rplC",
     }
 
-    # input = lab report
-    lab_cols = [
-        "Sample ID",
-        "Position within CDS",
-        "Nucleotide Change",
-        "Amino acid Change",
-        "Annotation",
-        "Gene Name",
-        "antimicrobial",
-        "mdl_LIMSfinal",
-    ]
-    lab = pandas.read_csv(lab_report, usecols=lab_cols)
-    lab.columns = lab.columns.str.replace(" ", "_")
+    # output = LIMS report
+    lims = pandas.DataFrame(columns=header)
 
+    if os.path.getsize(lab_report.name) > 0:
+        # input = lab report
+        lab_cols = [
+            "Sample ID",
+            "Position within CDS",
+            "Nucleotide Change",
+            "Amino acid Change",
+            "Annotation",
+            "Gene Name",
+            "antimicrobial",
+            "mdl_LIMSfinal",
+        ]
+        lab = pandas.read_csv(lab_report, usecols=lab_cols)
+        lab.columns = lab.columns.str.replace(" ", "_")
+    else:
+        logger.error(f"empty input lab report, output empty lims report")
+        return lims
+        
     # consider only genes of interest for LIMS report, see gene_drug_to_column dictionary hard coded above
     # get list of genes that are "reportable"
     # i.e. weed out genes that are not reportable
@@ -240,8 +248,6 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
     lab["mdl_LIMSfinal"] = pandas.Categorical(lab["mdl_LIMSfinal"], ["R", "Insufficient Coverage", "U", "S", "WT"])
     lab_sorted = lab.sort_values(["antimicrobial", "mdl_LIMSfinal"], ascending=True)
 
-    # output = LIMS report
-    lims = pandas.DataFrame(columns=header)
     lims.loc[0, "MDL sample accession numbers"] = lab["Sample_ID"][0]
     lims.loc[0, "M_DST_A01_ID"] = lineage_name
     lims.loc[0, "Analysis date"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
