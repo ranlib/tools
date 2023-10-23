@@ -672,6 +672,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_no_mutations.loc[index, "CDS.pos"] = -1
                 tsv_no_mutations.loc[index, "AA.pos"] = -1
                 tsv_no_mutations.loc[index, "Distance"] = -1
+                tsv_no_mutations.loc[index, "FILTER"] = "N/A"
                 tsv_no_mutations.loc[index, "HGVS.c"] = "N/A"
                 tsv_no_mutations.loc[index, "HGVS.p"] = "N/A"
                 tsv_no_mutations.loc[index, "Annotation"] = "N/A"
@@ -698,6 +699,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_no_mutations.loc[index, "CDS.pos"] = -1
                 tsv_no_mutations.loc[index, "AA.pos"] = -1
                 tsv_no_mutations.loc[index, "Distance"] = -1
+                tsv_no_mutations.loc[index, "FILTER"] = "N/A"
                 tsv_no_mutations.loc[index, "HGVS.c"] = "N/A"
                 tsv_no_mutations.loc[index, "HGVS.p"] = "N/A"
                 tsv_no_mutations.loc[index, "Annotation"] = "N/A"
@@ -736,6 +738,8 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
     tsv_final["mdl_LIMSfinal"] = tsv_final["mdl_prelim"]
     tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", "mdl_LIMSfinal"] = "WT"
     tsv_final.loc[(tsv_final["Breadth_of_coverage_QC"] == "FAIL") & (tsv_final["mdl_prelim"] != "R"), "mdl_LIMSfinal"] = "Insufficient Coverage"
+
+    tsv_final.loc[tsv_final["HGVS.p"] == "", "HGVS.p"] = "N/A"
 
     return [tsv_final, genes_with_mutations]
 
