@@ -22,7 +22,7 @@ logging.basicConfig(encoding="utf-8")
 RRDR = pandas.Interval(left=426, right=452, closed="both")
 
 
-def get_drug_evaluation(severity: str, antimicrobial: str, gene: str, annotation: str, amino_acid_change: str, position_within_cds: int) -> str:
+def get_drug_evaluation(severity: str, antimicrobial: str, gene: str, annotation: str, amino_acid_change: str, position_within_cds: int, position_within_aa: int) -> str:
     """
     get drug evaluation based on severity and other variables
     :param str severity
@@ -30,6 +30,8 @@ def get_drug_evaluation(severity: str, antimicrobial: str, gene: str, annotation
     :param str gene
     :param str annotation
     :param str amino_acid_change
+    :param str position_within_cds
+    :param str position_within_aa
     :return drug_evaluation
     """
     drug_evaluation = ""
@@ -50,7 +52,8 @@ def get_drug_evaluation(severity: str, antimicrobial: str, gene: str, annotation
         if antimicrobial != "rifampin":
             drug_evaluation = f"No mutations associated with resistance to {antimicrobial} detected"
         else:  # rifampin
-            if (annotation == "synonymous_variant") and (position_within_cds in RRDR):
+            #if (annotation == "synonymous_variant") and (position_within_cds in RRDR):
+            if (annotation == "synonymous_variant") and (position_within_aa in RRDR):
                 drug_evaluation = "Predicted susceptibility to rifampin. The detected synonymous mutation(s) do not confer resistance"
             else:
                 drug_evaluation = "Predicted susceptibility to rifampin"
@@ -74,6 +77,7 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
     aa_changes_with_parens = [f"({x})" for x in aa_changes]
     annotations = chem_gene["Annotation"].to_list()
     positions_within_cds = chem_gene["Position_within_CDS"].to_list()
+    positions_within_aa = chem_gene["AA.pos"].to_list()
 
     chem_gene_eval = set()
     mutation_counter = {"R": 0, "U": 0, "S": 0}
@@ -87,7 +91,8 @@ def get_gene_drug_evaluation(chem_gene: pandas.DataFrame, gene: str) -> str:
             mutation_counter["U"] += 1
 
         if severity == "S":
-            if (gene == "rpoB") and (annotations[i] == "synonymous_variant") and (positions_within_cds[i] in RRDR):
+            #if (gene == "rpoB") and (annotations[i] == "synonymous_variant") and (positions_within_cds[i] in RRDR):
+            if (gene == "rpoB") and (annotations[i] == "synonymous_variant") and (positions_within_aa[i] in RRDR):
                 chem_gene_eval.add(nt_changes[i] + " " + aa_changes_with_parens[i] + "[synonymous]")
             mutation_counter["S"] += 1
 
@@ -223,6 +228,7 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
         lab_cols = [
             "Sample ID",
             "Position within CDS",
+            "AA.pos",
             "Nucleotide Change",
             "Amino acid Change",
             "Annotation",
@@ -270,7 +276,8 @@ def lims_report(lab_report: str, lineage_name: str, operator: str) -> pandas.Dat
             annotation = chem.iloc[0]["Annotation"]
             amino_acid_change = chem.iloc[0]["Amino_acid_Change"]
             position_within_cds = chem.iloc[0]["Position_within_CDS"]
-            lims.loc[0, drug_to_column[drug]] = get_drug_evaluation(severity, drug, gene, annotation, amino_acid_change, position_within_cds)
+            position_within_aa = chem.iloc[0]["AA.pos"]
+            lims.loc[0, drug_to_column[drug]] = get_drug_evaluation(severity, drug, gene, annotation, amino_acid_change, position_within_cds, position_within_aa)
 
             genes_for_this_chemical = [key[0] for key in list(gene_drug_to_column.keys()) if key[1] == drug]
             for gene in genes_for_this_chemical:
