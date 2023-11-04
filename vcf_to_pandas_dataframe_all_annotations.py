@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-read vcf file, loop over record, write tsv file
+read vcf file, loop over records, write tsv file
 """
 import re
 import pandas
@@ -9,15 +9,27 @@ from collections import OrderedDict
 import vcf
 import hgvs.parser
 
-def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: bool, verbose: bool) -> pandas.DataFrame:
+def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, regions: str, filter_variants: bool, verbose: bool) -> pandas.DataFrame:
     """
     parse vcf file
 
     :param str vcf_file: filename of annotated vcf file
     :param str samplename: name of sample
-    :param str bed_file: tab separated ascii file with 6 columns ["genome", "start", "stop", "locus", "gene", "chemical"]
+    :param str regions: tab separated ascii file with 6 columns ["genome", "start", "stop", "locus", "gene", "chemical"]
+    :param bool filter_variants: filter to keep only variants in genes of interest
+    :param bool verbose: verbose flag
     :return: pandas data frame
     """
+    # get genes of interest
+    regions = pandas.read_csv(regions, header=None, sep="\t")
+    regions.columns = ["genome", "start", "stop", "locus", "gene", "chemical"]
+    genes_of_interest = regions["gene"].to_list()
+    
+    # special treatment for these genes
+    gene_list_4 = ["Rv0678", "mmpL5", "mmpS5"]
+
+    # instantiate hgvs parser
+    hgvs_parser = hgvs.parser.Parser()
 
     # prepare default output tsv file
     cols = [ "Sample ID","CHROM","POS","REF","ALT","FILTER","Allele","Annotation","Annotation_Impact","Gene_Name","Gene_ID","Feature_Type","Feature_ID","Transcript_BioType","Rank","HGVS.c","HGVS.p","cDNA.pos / cDNA.length","CDS.pos / CDS.length","AA.pos / AA.length","Distance","cDNA.pos","cDNA.length","CDS.pos","CDS.length","AA.pos","AA.length","Total Read Depth","AD_REF","Variant Read Depth","Percent Alt Allele",]
@@ -110,48 +122,78 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
                     vcf_item["QUAL"] = "." if not record.QUAL else record.QUAL
                     vcf_item["FILTER"] = "." if not record.FILTER else ";".join(record.FILTER)
 
-                    hgvs_parser = hgvs.parser.Parser()
                     variant = hgvs_parser.parse_hgvs_variant(record.CHROM + ":" + this_annotation_item["HGVS.c"])
 
                     vcf_item["ref_concordant"] = variant.posedit.edit.ref == record.REF
 
                     ANNS.append(vcf_item | this_annotation_item)
 
-                    # if variant not modifier, take first annotation in snpEff annotation list
-                    if index == 0 and this_annotation_item["Annotation_Impact"] != "MODIFIER":
-                        break
-
-    # output dataframe
+    # create full output dataframe
     df = pandas.DataFrame(ANNS)
-
+    if verbose:
+        print("<I> vcf_to_pandas_dataframe:")
+        print(df[["POS", "Gene_Name", "REF", "ALT"]])
+    
     # some cleanup of data frame here
     if "Distance" in df:
-        df['Distance'] = df['Distance'].replace(to_replace="",value="-1")
+        # for variants in gene Distance doesn't make sense
+        # set to value much larger then genome length
+        df['Distance'] = df['Distance'].replace(to_replace="",value="10000000")
         df["Distance"] = df['Distance'].astype(int)
-        
-    # select distance > 0
-    df = df[df["Distance"]>0]
 
-    # select same ref
-    df = df[df["ref_concordant"]]
-
-    # take min distance
-    if filter_variants:
-        df = df[ df.Distance == df.Distance.min() ]
+    # Gene_Name can be & separated list of Genes
+    # Gene_Name can be - separated list of Genes
+    # ==> explode dataframe
+    if "Gene_Name" in df:
+        df = df.assign(Gene_Name=df["Gene_Name"].str.split("&")).explode("Gene_Name")
+        df = df.assign(Gene_Name=df["Gene_Name"].str.split("-")).explode("Gene_Name")
+        df.reset_index(drop=True)
+        # select genes of interest
+        if filter_variants:
+            df = df.query('Gene_Name in @genes_of_interest')
+            df.reset_index(drop=True)
     
-    df.reset_index(drop=True)
+    if verbose:
+        print("<I> vcf_to_pandas_dataframe:")
+        print(df[["POS", "Gene_Name", "REF", "ALT"]])
+    
+    # create filtered dataframe
+    if len(df.index)>0 and set(["POS", "Annotation_Impact", "Gene_Name"]).issubset(set(df.columns)):
+        gene_list_4 = ["Rv0678", "mmpL5", "mmpS5"]
+        df_list_to_keep = []
+        # get unique key to id dataset
+        df_keys = df[ ["POS", "ALT","Gene_Name"] ].drop_duplicates()
+        keys = list(df_keys.itertuples(index=False, name=None))
+        for key in keys:
+            position, allele, gene = key
+            filter_for_this_position = 'POS==@position and ALT==@allele and Gene_Name==@gene'
+            df_this_position = df.query(filter_for_this_position)
+            if df_this_position.head(1)["Annotation_Impact"].to_list()[0] != "MODIFIER":
+                df_list_to_keep.append(df_this_position.head(1)) 
+            elif set(df_this_position["Gene_Name"]).intersection(set(gene_list_4)):
+                df_list_to_keep.append(df_this_position.query('Gene_Name in @gene_list_4')) 
+            else:
+                df_list_to_keep.append(df_this_position[df_this_position.Distance == df_this_position.Distance.min()])
 
-    return df
+        df_filtered = pandas.concat(df_list_to_keep)
+        df_filtered.reset_index(drop=True)
+    else:
+        df_filtered = df.copy()
+        
+    return df, df_filtered
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="vcf_to_pandas_dataframe", prog="vcf_to_pandas_dataframe", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
     parser.add_argument("--vcf", "-v", type=argparse.FileType("r"), dest="vcf_file", help="annotated vcf file", required=True)
     parser.add_argument("--samplename", "-s", type=str, dest="samplename", help="sample name", required=True)
-    parser.add_argument("--filter", "-f", action="store_true", help="filter out variants which are not labeled PASS in vcf filter column")
+    parser.add_argument("--bed", "-i", type=argparse.FileType("r"), help="bed file with regions of interest", required=True)
+    parser.add_argument("--filter", "-f", action="store_true", help="filter out genes that are not genes of interest")
     parser.add_argument("--verbose", action="store_true", help="turn on debugging output")
     parser.add_argument("--tsv", "-t", type=str, dest="output_tsv", help="output tsv file", required=True)
+    parser.add_argument("--tsv_filtered", "-q", type=str, dest="output_filtered_tsv", help="output tsv file", required=True)
     args = parser.parse_args()
 
-    df = vcf_to_pandas_dataframe(args.vcf_file.name, args.samplename, args.filter, args.verbose)
+    df, df_filtered = vcf_to_pandas_dataframe(args.vcf_file.name, args.samplename, args.bed.name, args.filter, args.verbose)
     df.to_csv(args.output_tsv, sep="\t", index=False)
+    df_filtered.to_csv(args.output_filtered_tsv, sep="\t", index=False)
