@@ -2,11 +2,12 @@
 """
 generate severity code for variants
 """
+import os
 import argparse
 import json
 import pandas
 from sympy import Interval
-from vcf_to_pandas_dataframe import vcf_to_pandas_dataframe
+from vcf_to_pandas_dataframe_all_annotations import vcf_to_pandas_dataframe
 from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 
@@ -174,14 +175,14 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
     """
     get interpretation for Rv0678, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
     """
-    is_synonymous = annotation == "synonymous_variant"
-    is_nonsynonymous = annotation != "synonymous_variant"
+    is_synonymous = "synonymous_variant" in annotation
+                
     looker = mdl = ""
 
     if gene == "Rv0678":
-        if Rv0678.contains(genomic_position) & is_synonymous:
+        if Rv0678.contains(genomic_position) and is_synonymous:
             looker = mdl = "S"
-        if Rv0678.contains(genomic_position) & is_nonsynonymous:
+        if Rv0678.contains(genomic_position) and not is_synonymous:
             looker = mdl = "U"
         if Rv0678_promoter.contains(genomic_position):
             looker = mdl = "U"
@@ -190,9 +191,9 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             mdl = "S"
 
     if gene == "atpE":
-        if atpE.contains(genomic_position) & is_synonymous:
+        if atpE.contains(genomic_position) and is_synonymous:
             looker = mdl = "S"
-        if atpE.contains(genomic_position) & is_nonsynonymous:
+        if atpE.contains(genomic_position) and not is_synonymous:
             looker = mdl = "U"
         if atpE_promoter.contains(genomic_position):
             looker = mdl = "U"
@@ -201,9 +202,9 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             mdl = "S"
 
     if gene == "pepQ":
-        if pepQ.contains(genomic_position) & is_synonymous:
+        if pepQ.contains(genomic_position) and is_synonymous:
             looker = mdl = "S"
-        if pepQ.contains(genomic_position) & is_nonsynonymous:
+        if pepQ.contains(genomic_position) and not is_synonymous:
             looker = mdl = "U"
         if pepQ_promoter.contains(genomic_position):
             looker = mdl = "U"
@@ -212,9 +213,9 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             mdl = "S"
 
     if gene == "rplC":
-        if rplC.contains(genomic_position) & is_synonymous:
+        if rplC.contains(genomic_position) and is_synonymous:
             looker = mdl = "S"
-        if rplC.contains(genomic_position) & is_nonsynonymous:
+        if rplC.contains(genomic_position) and not is_synonymous:
             looker = mdl = "U"
         if rplC_promoter.contains(genomic_position):
             looker = mdl = "U"
@@ -223,18 +224,18 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             mdl = "S"
 
     if gene == "mmpL5":
-        if mmpL5.contains(genomic_position) & is_synonymous:
+        if mmpL5.contains(genomic_position) and is_synonymous:
             looker = mdl = "S"
-        if mmpL5.contains(genomic_position) & is_nonsynonymous:
+        if mmpL5.contains(genomic_position) and not is_synonymous:
             looker = mdl = "U"
         if annotation == "upstream_gene_variant":
             looker = "U"
             mdl = "S"
 
     if gene == "mmpS5":
-        if mmpS5.contains(genomic_position) & is_synonymous:
+        if mmpS5.contains(genomic_position) and is_synonymous:
             looker = mdl = "S"
-        if mmpS5.contains(genomic_position) & is_nonsynonymous:
+        if mmpS5.contains(genomic_position) and not is_synonymous:
             looker = mdl = "U"
         if annotation == "upstream_gene_variant":
             looker = "U"
@@ -243,7 +244,8 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
     if gene == "rrl":
         if rrl_rRNA_1.contains(cds_position):
             looker = mdl = "U"
-        if rrl_rRNA_1_complement.contains(cds_position):
+        else:
+        #if rrl_rRNA_1_complement.contains(cds_position):
             # looker = "S"
             # mdl = "U"
             looker = "U"
@@ -335,10 +337,11 @@ def get_interpretation_2_2_2(AA_position: int, annotation: str) -> list[str]:
     return [looker, mdl]
 
 
-def get_interpretation_3_2_1(position: int) -> list[str]:
+def get_interpretation_3_2_1(position: int, length: int = 1) -> list[str]:
     """
     implementation of interpretation for rrs gene according to 3.2.1
     :param int position: genomic position in NC_000962.3
+    :param int length: length of variant, e.g. SNP = 1, 3 nt MNP = 3
     :return: list with 2 strings
     """
     if position in [1473246, 1473247, 1473329]:
@@ -458,20 +461,19 @@ def add_drug_annotation(tsv: pandas.DataFrame, annotation: str) -> pandas.DataFr
                 if int(position) in json_annotation[gene_id][nucleotide_change]["genome_positions"]:
                     for _, entry in enumerate(json_annotation[gene_id][nucleotide_change]["annotations"]):
                         pair = ["", ""]
-                        if "drug" in entry:
+                        if "drug" in entry and "who_confidence" in entry:
                             pair[0] = entry["drug"]
-                        if "who_confidence" in entry:
                             pair[1] = entry["who_confidence"]
-                        drug_annotation.append(pair)
+                            drug_annotation.append(pair)
+
             elif amino_acid_change in list(json_annotation[gene_id].keys()):
                 if int(position) in json_annotation[gene_id][amino_acid_change]["genome_positions"]:
                     for _, entry in enumerate(json_annotation[gene_id][amino_acid_change]["annotations"]):
                         pair = ["", ""]
-                        if "drug" in entry:
+                        if "drug" in entry and "who_confidence" in entry:
                             pair[0] = entry["drug"]
-                        if "who_confidence" in entry:
                             pair[1] = entry["who_confidence"]
-                        drug_annotation.append(pair)
+                            drug_annotation.append(pair)
 
         if len(drug_annotation) == 0:
             tsv_out.loc[i, tsv_out.columns] = row
@@ -550,7 +552,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
         tsv_mutations.loc[index, "percent_above_threshold"] = coverage_percentage[row["Gene_Name"]] if row["Gene_Name"] in coverage_percentage else -1
 
         # 1.
-        if row["Gene_Name"] in gene_list_1:
+        if row["Gene_Name"] in gene_list_1 + gene_list_4:
             # 1.1
             if (row["confidence"] != "") and (row["antimicrobial"] != ""):
                 tsv_mutations.loc[index, "looker"] = looker_1_1[row["confidence"]]
@@ -564,20 +566,21 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
                 tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
                 tsv_mutations.loc[index, "rationale"] = "expert rule 1.2"
 
-        # 1.3
-        if row["Gene_Name"] in gene_list_4: 
-            # 1.1
-            if (row["confidence"] == "Assoc w R") and (row["antimicrobial"] != ""):
-                tsv_mutations.loc[index, "looker"] = looker_1_1[row["confidence"]]
-                tsv_mutations.loc[index, "mdl_prelim"] = mdl_1_1[row["confidence"]]
+        # # 1' (aka 1.3)
+        # if row["Gene_Name"] in gene_list_4: 
+        #     # 1.1
+        #     if (row["confidence"] == "Assoc w R") and (row["antimicrobial"] != ""):
+        #         tsv_mutations.loc[index, "looker"] = looker_1_1[row["confidence"]]
+        #         tsv_mutations.loc[index, "mdl_prelim"] = mdl_1_1[row["confidence"]]
 
-            # 1.2
-            if (row["confidence"] != "Assoc w R") and (row["antimicrobial"] != ""):
-                looker, mdl = get_interpretation_1_2(row["Gene_Name"], row["POS"], row["CDS.pos"], row["Annotation"])
-                tsv_mutations.loc[index, "looker"] = looker
-                tsv_mutations.loc[index, "mdl_prelim"] = mdl
-                tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
-                tsv_mutations.loc[index, "rationale"] = "expert rule 1.2"
+        #     # 1.2
+        #     if (row["confidence"] != "Assoc w R") and (row["antimicrobial"] != ""):
+        #         looker, mdl = get_interpretation_1_2(row["Gene_Name"], row["POS"], row["CDS.pos"], row["Annotation"])
+        #         tsv_mutations.loc[index, "looker"] = looker
+        #         tsv_mutations.loc[index, "mdl_prelim"] = mdl
+        #         #tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
+        #         tsv_mutations.loc[index, "confidence"] = row["confidence"] if row["confidence"] != "" else "no WHO annotation"
+        #         tsv_mutations.loc[index, "rationale"] = "expert rule 1.2 in 1.3"
 
         # 2.
         if row["Gene_Name"] in gene_list_2:
@@ -739,6 +742,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
     tsv_final.loc[tsv_final["Variant_QC"] == "FAIL", "mdl_LIMSfinal"] = "WT"
     tsv_final.loc[(tsv_final["Breadth_of_coverage_QC"] == "FAIL") & (tsv_final["mdl_prelim"] != "R"), "mdl_LIMSfinal"] = "Insufficient Coverage"
 
+    # fix some cells with no HGVS.p entry
     tsv_final.loc[tsv_final["HGVS.p"] == "", "HGVS.p"] = "N/A"
 
     return [tsv_final, genes_with_mutations]
@@ -763,20 +767,19 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action="store_true", help="turn on debugging output")
     args = parser.parse_args()
 
-    # filter vcf file, take only large deletions which overlap regions
-    # intersect_vcf_bed(args.vcf, args.bed.name, args.filtered_vcf)
-
     # vcf -> tsv
-    vcf_df = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.filter_variants, args.verbose)
-    # vcf_df = vcf_to_pandas_dataframe(args.filtered_vcf.name, args.samplename, args.filter_variants, args.verbose)
-    #vcf_df.to_csv("vcf_df.tsv",index=False,sep="\t")
+    vcf_df, vcf_df_filtered = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.bed.name, args.filter_genes, args.verbose)
+    if args.debug:
+        vcf_df.to_csv(args.samplename + ".tsv",index=False,sep="\t")
+        vcf_df_filtered.to_csv(args.samplename + "_filtered.tsv",index=False,sep="\t")
 
-    if len(vcf_df.index) == 0:
+    if len(vcf_df_filtered.index) == 0:
         print(f"<W> variant_interpretation: no mutations in {args.vcf.name}, no interpretation report.")
     else:
         # get drug annotation
-        tsv_out = add_drug_annotation(vcf_df, args.json.name)
-        # tsv_out.to_csv("vcf_df_drugs.tsv", index=False, sep="\t")
+        tsv_out = add_drug_annotation(vcf_df_filtered, args.json.name)
+        if args.debug:
+            tsv_out.to_csv(args.samplename + "_drugs.tsv", index=False, sep="\t")
 
         # get drug information for region
         regions = pandas.read_csv(args.bed.name, header=None, sep="\t")
