@@ -171,9 +171,15 @@ mdl_3_1 = {
 }
 
 
-def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, annotation: str) -> list[str]:
+def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, annotation: str, nucleotide_change: str) -> list[str]:
     """
     get interpretation for Rv0678, atpE, pepQ, mmpL5, mmpS5, rrl, rplC
+    :param str gene: gene
+    :param str annotation: annotation
+    :param str nucleotide_change: nucleotide change
+    :param int genomic_position: genomic position
+    :param int cds_position: CDS position
+    :return: list with 2 strings
     """
     is_synonymous = "synonymous_variant" in annotation
                 
@@ -251,6 +257,22 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
             looker = "U"
             mdl = "S"
 
+    # it none of the conditions above apply for this gene list
+    is_large_deletion = False
+    if "del" in nucleotide_change:
+        if len(nucleotide_change.split("del")[1]) > 49:
+            is_large_deletion = True
+    if "" in [looker,mdl]:
+        if is_synonymous:
+            looker = "S"
+            mdl = "S"
+        elif is_large_deletion:
+            looker = "U"
+            mdl = "U"
+        else:
+            looker = "U"
+            mdl = "S"
+            
     return [looker, mdl]
 
 
@@ -297,8 +319,7 @@ def get_interpretation_2_2_1(annotation: str, distance: int) -> list[str]:
     :param int position: genomic position in NC_000962.3
     :return: list with 2 strings
     """
-    is_synonymous = annotation == "synonymous_variant"
-    is_nonsynonymous = annotation != "synonymous_variant"
+    is_synonymous = "synonymous_variant" in annotation
     # ?
     effect_types = ["feature_ablation", "disruptive_inframe_insertion", "frameshift_variant", "stop_lost", "splice_region_variant", "missense_variant", "upstream_gene_variant", "disruptive_inframe_deletion", "nonsense_variant"]
     looker = mdl = ""
@@ -307,7 +328,7 @@ def get_interpretation_2_2_1(annotation: str, distance: int) -> list[str]:
     else:
         if is_synonymous:
             looker = mdl = "S"
-        if is_nonsynonymous or annotation == "upstream_gene_variant":
+        if not is_synonymous or annotation == "upstream_gene_variant":
             looker = "U"
             mdl = "S"
     return [looker, mdl]
@@ -319,18 +340,17 @@ def get_interpretation_2_2_2(AA_position: int, annotation: str) -> list[str]:
     :param int AA_position: position in amino acid sequence
     :return: list with 2 strings
     """
-    is_synonymous = annotation == "synonymous_variant"
-    is_nonsynonymous = annotation != "synonymous_variant"
+    is_synonymous = "synonymous_variant" in annotation
     looker = mdl = ""
     if rpoB_AA_region.contains(AA_position):
         if is_synonymous:
             looker = mdl = "S"
-        if is_nonsynonymous:
+        if not is_synonymous:
             looker = mdl = "R"
     else:
         if is_synonymous:
             looker = mdl = "S"
-        if is_nonsynonymous or annotation == "upstream_gene_variant":
+        if not is_synonymous or annotation == "upstream_gene_variant":
             looker = "U"
             mdl = "S"
 
@@ -376,8 +396,7 @@ def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[st
     :param str nucleotide_change: nucleotide change
     :return: list of 2 strings
     """
-    is_synonymous = annotation == "synonymous_variant"
-    is_nonsynonymous = annotation != "synonymous_variant"
+    is_synonymous = "synonymous_variant" in annotation
     is_short_deletion = is_large_deletion = False
     if "del" in nucleotide_change:
         if len(nucleotide_change.split("del")[1]) in pandas.Interval(0, 50, closed="neither"):
@@ -387,7 +406,7 @@ def get_interpretation_3_2_2(annotation: str, nucleotide_change: str) -> list[st
     looker = mdl = ""
     if is_synonymous:
         looker = mdl = "S"
-    if is_nonsynonymous:
+    if not is_synonymous:
         if is_large_deletion:
             looker = mdl = "U"
         else:
@@ -403,9 +422,9 @@ def get_interpretation_3_2_2_1(annotation: str, AA_position: int) -> list[str]:
     :param int position: position within AA sequence
     :return: list of 2 strings
     """
-    is_nonsynonymous = annotation != "synonymous_variant"
+    is_synonymous = "synonymous_variant" in annotation
     looker = mdl = ""
-    if is_nonsynonymous and AA_position in pandas.Interval(88, 94, closed="both"):
+    if not is_synonymous and AA_position in pandas.Interval(88, 94, closed="both"):
         looker = mdl = "U"
     return [looker, mdl]
 
@@ -417,9 +436,9 @@ def get_interpretation_3_2_2_2(annotation: str, AA_position: int) -> list[str]:
     :param int position: position in AA sequence
     :return: list of 2 strings
     """
-    is_nonsynonymous = annotation != "synonymous_variant"
+    is_synonymous = "synonymous_variant" in annotation
     looker = mdl = ""
-    if is_nonsynonymous and AA_position in pandas.Interval(446, 507, closed="both"):
+    if not is_synonymous and AA_position in pandas.Interval(446, 507, closed="both"):
         looker = mdl = "U"
     return [looker, mdl]
 
@@ -560,7 +579,7 @@ def run_interpretation(tsv: pandas.DataFrame, samplename: str, drug_info: {}, co
 
             # 1.2
             if (row["confidence"] == "") and (row["antimicrobial"] != ""):
-                looker, mdl = get_interpretation_1_2(row["Gene_Name"], row["POS"], row["CDS.pos"], row["Annotation"])
+                looker, mdl = get_interpretation_1_2(row["Gene_Name"], row["POS"], row["CDS.pos"], row["Annotation"], row["HGVS.c"])
                 tsv_mutations.loc[index, "looker"] = looker
                 tsv_mutations.loc[index, "mdl_prelim"] = mdl
                 tsv_mutations.loc[index, "confidence"] = "no WHO annotation"
