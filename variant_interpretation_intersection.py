@@ -7,8 +7,7 @@ import argparse
 import json
 import pandas
 from sympy import Interval
-from vcf_to_pandas_dataframe_all_annotations import vcf_to_pandas_dataframe_all_annotations
-from vcf_to_pandas_dataframe import vcf_to_pandas_dataframe
+from vcf_to_pandas_dataframe_all_annotations import vcf_to_pandas_dataframe
 from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 
@@ -109,6 +108,8 @@ def get_intervals(regions: pandas.DataFrame):
             rpoB_AA_region = Interval(426, 452)
 
 
+REFERENCE = "NC_000962.3"
+
 #gene_list_1 = ["Rv0678", "atpE", "pepQ", "mmpL5", "mmpS5", "rrl", "rplC"]
 
 gene_list_1 = ["atpE", "pepQ", "rrl", "rplC"]
@@ -186,65 +187,68 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
                 
     looker = mdl = ""
 
+    variant = hgvs_parser.parse_hgvs_variant(REFERENCE + ":" + nucleotide_change)
+    variant_interval = Interval(variant.posedit.pos.start.base, variant.posedit.pos.end.base)
+
     if gene == "Rv0678":
-        if Rv0678.contains(genomic_position) and is_synonymous:
+        if not Rv0678.intersect(variant_interval).is_empty and is_synonymous:
             looker = mdl = "S"
-        if Rv0678.contains(genomic_position) and not is_synonymous:
+        if not Rv0678.intersect(variant_interval).is_empty and not is_synonymous:
             looker = mdl = "U"
-        if Rv0678_promoter.contains(genomic_position):
+        if not Rv0678_promoter.intersect(variant_interval).is_empty:
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant" and not Rv0678_promoter.contains(genomic_position):
+        if "upstream_gene_variant" in annotation and Rv0678_promoter.intersect(variant_interval).is_empty:
             looker = "U"
             mdl = "S"
 
     if gene == "atpE":
-        if atpE.contains(genomic_position) and is_synonymous:
+        if not atpE.intersect(variant_interval).is_empty and is_synonymous:
             looker = mdl = "S"
-        if atpE.contains(genomic_position) and not is_synonymous:
+        if not atpE.intersect(variant_interval).is_empty and not is_synonymous:
             looker = mdl = "U"
-        if atpE_promoter.contains(genomic_position):
+        if not atpE_promoter.intersect(variant_interval).is_empty:
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant" and not atpE_promoter.contains(genomic_position):
+        if "upstream_gene_variant" in annotation and atpE_promoter.intersect(variant_interval).is_empty:
             looker = "U"
             mdl = "S"
 
     if gene == "pepQ":
-        if pepQ.contains(genomic_position) and is_synonymous:
+        if not pepQ.intersect(variant_interval).is_empty and is_synonymous:
             looker = mdl = "S"
-        if pepQ.contains(genomic_position) and not is_synonymous:
+        if not pepQ.intersect(variant_interval).is_empty and not is_synonymous:
             looker = mdl = "U"
-        if pepQ_promoter.contains(genomic_position):
+        if not pepQ_promoter.intersect(variant_interval).is_empty:
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant" and not pepQ_promoter.contains(genomic_position):
+        if not "upstream_gene_variant" in annotation  and pepQ_promoter.intersect(variant_interval).is_empty:
             looker = "U"
             mdl = "S"
 
     if gene == "rplC":
-        if rplC.contains(genomic_position) and is_synonymous:
+        if not rplC.intersect(variant_interval).is_empty and is_synonymous:
             looker = mdl = "S"
-        if rplC.contains(genomic_position) and not is_synonymous:
+        if not rplC.intersect(variant_interval).is_empty and not is_synonymous:
             looker = mdl = "U"
-        if rplC_promoter.contains(genomic_position):
+        if not rplC_promoter.intersect(variant_interval).is_empty:
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant" and not rplC_promoter.contains(genomic_position):
+        if "upstream_gene_variant" in annotation and rplC_promoter.intersect(variant_interval).is_empty:
             looker = "U"
             mdl = "S"
 
     if gene == "mmpL5":
-        if mmpL5.contains(genomic_position) and is_synonymous:
+        if not mmpL5.intersect(variant_interval).is_empty and is_synonymous:
             looker = mdl = "S"
-        if mmpL5.contains(genomic_position) and not is_synonymous:
+        if not mmpL5.intersect(variant_interval).is_empty and not is_synonymous:
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant":
+        if "upstream_gene_variant" in annotation:
             looker = "U"
             mdl = "S"
 
     if gene == "mmpS5":
-        if mmpS5.contains(genomic_position) and is_synonymous:
+        if not mmpS5.intersect(variant_interval).is_empty and is_synonymous:
             looker = mdl = "S"
-        if mmpS5.contains(genomic_position) and not is_synonymous:
+        if not mmpS5.intersect(variant_interval).is_empty and not is_synonymous:
             looker = mdl = "U"
-        if annotation == "upstream_gene_variant":
+        if "upstream_gene_variant" in annotation:
             looker = "U"
             mdl = "S"
 
@@ -252,7 +256,7 @@ def get_interpretation_1_2(gene: str, genomic_position: int, cds_position: int, 
         if rrl_rRNA_1.contains(cds_position):
             looker = mdl = "U"
         else:
-        #if rrl_rRNA_1_complement.contains(cds_position):
+        #if rrl_rRNA_1_complement.intersect(cds_position):
             # looker = "S"
             # mdl = "U"
             looker = "U"
@@ -788,7 +792,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # vcf -> tsv
-    vcf_df, vcf_df_filtered = vcf_to_pandas_dataframe_all_annotations(args.vcf.name, args.samplename, args.bed.name, args.filter_genes, args.verbose)
+    vcf_df, vcf_df_filtered = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.bed.name, args.filter_genes, args.verbose)
     if args.debug:
         vcf_df.to_csv(args.samplename + ".tsv",index=False,sep="\t")
         vcf_df_filtered.to_csv(args.samplename + "_filtered.tsv",index=False,sep="\t")

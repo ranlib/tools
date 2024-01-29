@@ -9,8 +9,9 @@ RUN apt-get update -y && \
 
 RUN pip install pandas sympy pysam pyvcf3
 
-COPY variant_interpretation.py  /opt/variant_interpretation/
+COPY vcf_to_pandas_dataframe_all_annotations.py /opt/variant_interpretation/
 COPY vcf_to_pandas_dataframe.py /opt/variant_interpretation/
+COPY variant_interpretation.py  /opt/variant_interpretation/
 COPY coverage.py                /opt/variant_interpretation/
 COPY get_deletions_in_region.py /opt/variant_interpretation/
 COPY intersect_vcf_bed.py       /opt/variant_interpretation/

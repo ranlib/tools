@@ -21,7 +21,6 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
 
     # loop over vcf file
     vcf_reader = vcf.Reader(filename=vcf_file)
-    i = 0
     
     # get annotation terms from header
     # check there are mutations in input vcf file
@@ -36,6 +35,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
 
     # loop over records
     ANNS = []
+    i = 0
     for record in vcf_reader:
         vcf_item = OrderedDict()
         vcf_item["Sample ID"] = samplename
@@ -48,7 +48,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
         vcf_item["FILTER"] = "." if not record.FILTER else ";".join(record.FILTER)
         #print(i, record, flush=True)
         i += 1
-        
+
         if filter_variants and record.FILTER:
             print(f"<W> vcf_to_pandas_dataframe: filter out variant {record} with filter column entry {record.FILTER}")
             continue
@@ -80,10 +80,10 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
                 # print(annotation_item)
                 distances = []
                 annotation_item_list = []
-                for annotation in info["ANN"]:
-                    annotation_item = dict(zip(annotation_keys, annotation.split("|")))
-                    annotation_item_list.append(annotation_item)
-                    distances.append(annotation_item["Distance"])
+                for item in info["ANN"]:
+                    this_annotation_item = dict(zip(annotation_keys, item.split("|")))
+                    annotation_item_list.append(this_annotation_item)
+                    distances.append(this_annotation_item["Distance"])
 
                 distances.remove("")
                 distances = list(map(int, distances))
@@ -161,13 +161,12 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, filter_variants: boo
         "AA.length",
         "AD_REF",
     ]
-    #df = df.drop(forget_this, axis=1)
-    df = df.drop(df.columns[df.columns.str.contains("ERRORS / WARNINGS / INFO")], axis=1)
-    # rename some columns
-    #new_names = {"Gene_Name": "Gene Name", "Gene_ID": "Gene ID", "HGVS.c": "Nucleotide Change", "HGVS.p": "Amino acid Change", "CDS.pos": "Position within CDS"}
-    #df = df.rename(columns=new_names)
-    df['Distance'] = df['Distance'].replace(to_replace="",value="-1")
-    df["Distance"] = df['Distance'].astype(int)
+
+    if "ERRORS / WARNINGS / INFO" in df:
+        df = df.drop(df.columns[df.columns.str.contains("ERRORS / WARNINGS / INFO")], axis=1)
+    if "Distance" in df:
+        df['Distance'] = df['Distance'].replace(to_replace="",value="-1")
+        df["Distance"] = df['Distance'].astype(int)
     return df
 
 
