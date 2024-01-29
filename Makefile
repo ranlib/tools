@@ -75,8 +75,11 @@
 # 3.2.2: split into 3.2.2.1/2/3, special treatment of gyrA and gyrB, use AA.pos
 # section 1: remove genes Rv0678, mmpL5, mmpS5 from gene_list_1 and create gene_list_4, special treatment of gene_list_4 in section 1
 #
+# v1.5.0
+# include vcf_to_pandas_dataframe_all_annotations
+#
 variant_interpretation:
-	docker build --no-cache -t dbest/variant_interpretation:v1.4.0 -f Dockerfile.variant_interpretation .
+	docker build --no-cache -t dbest/variant_interpretation:v1.5.0 -f Dockerfile.variant_interpretation .
 	#docker push dbest/variant_interpretation:v1.0.9 # push new version
 	#docker rmi dbest/variant_interpretation:v1.0.7 # remove old version
 
@@ -102,6 +105,7 @@ variant_interpretation:
 # v1.0.4
 # reset index after filtering for reportable genes
 # check for empty input lab report, output empty lims report in this case
+#
 #
 lims_report:
 	docker build --no-cache -t dbest/lims_report:v1.0.4 -f Dockerfile.lims_report .
