@@ -9,7 +9,7 @@ from collections import OrderedDict
 import vcf
 import hgvs.parser
 
-def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, regions: str, filter_variants: bool, verbose: bool) -> pandas.DataFrame:
+def vcf_to_pandas_dataframe_all_annotations(vcf_file: str, samplename: str, regions: str, filter_variants: bool, verbose: bool) -> pandas.DataFrame:
     """
     parse vcf file
 
@@ -131,7 +131,7 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, regions: str, filter
     # create full output dataframe
     df = pandas.DataFrame(ANNS)
     if verbose:
-        print("<I> vcf_to_pandas_dataframe:")
+        print("<I> vcf_to_pandas_dataframe: full output dataframe")
         print(df[["POS", "Gene_Name", "REF", "ALT"]])
     
     # some cleanup of data frame here
@@ -154,24 +154,29 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, regions: str, filter
             df.reset_index(drop=True)
     
     if verbose:
-        print("<I> vcf_to_pandas_dataframe:")
+        print("<I> vcf_to_pandas_dataframe: after filter of genes of interest")
         print(df[["POS", "Gene_Name", "REF", "ALT"]])
     
-    # create filtered dataframe
+    # create annotation filtered dataframe
     if len(df.index)>0 and set(["POS", "Annotation_Impact", "Gene_Name"]).issubset(set(df.columns)):
         gene_list_4 = ["Rv0678", "mmpL5", "mmpS5"]
         df_list_to_keep = []
         # get unique key to id dataset
-        df_keys = df[ ["POS", "ALT","Gene_Name"] ].drop_duplicates()
+        df_keys = df[ ["POS"] ].drop_duplicates()
         keys = list(df_keys.itertuples(index=False, name=None))
         for key in keys:
-            position, allele, gene = key
-            filter_for_this_position = 'POS==@position and ALT==@allele and Gene_Name==@gene'
+            position = key
+            filter_for_this_position = 'POS==@position'
             df_this_position = df.query(filter_for_this_position)
-            if df_this_position.head(1)["Annotation_Impact"].to_list()[0] != "MODIFIER":
+            if set(df_this_position["Gene_Name"]).intersection(set(gene_list_4)):
+                df_gene_list_4 = df_this_position.query('Gene_Name in @gene_list_4').copy()
+                # check if several annotations per gene
+                df_gene_list_4["Count"] = df_gene_list_4.groupby(['Gene_Name'])['Gene_Name'].transform('count')
+                df_gene_list_4_filtered = df_gene_list_4.query("Annotation != 'intergenic_region' or Count == 1").copy()
+                df_gene_list_4_filtered.drop(["Count"], axis=1, inplace=True)
+                df_list_to_keep.append(df_gene_list_4_filtered)
+            elif df_this_position.head(1)["Annotation_Impact"].to_list()[0] != "MODIFIER":
                 df_list_to_keep.append(df_this_position.head(1)) 
-            elif set(df_this_position["Gene_Name"]).intersection(set(gene_list_4)):
-                df_list_to_keep.append(df_this_position.query('Gene_Name in @gene_list_4')) 
             else:
                 df_list_to_keep.append(df_this_position[df_this_position.Distance == df_this_position.Distance.min()])
 
@@ -180,6 +185,10 @@ def vcf_to_pandas_dataframe(vcf_file: str, samplename: str, regions: str, filter
     else:
         df_filtered = df.copy()
         
+    if verbose:
+        print("<I> vcf_to_pandas_dataframe: final filtered dataframe")
+        print(df[["POS", "Gene_Name", "REF", "ALT"]])
+    
     return df, df_filtered
 
 
@@ -190,10 +199,10 @@ if __name__ == "__main__":
     parser.add_argument("--bed", "-i", type=argparse.FileType("r"), help="bed file with regions of interest", required=True)
     parser.add_argument("--filter", "-f", action="store_true", help="filter out genes that are not genes of interest")
     parser.add_argument("--verbose", action="store_true", help="turn on debugging output")
-    parser.add_argument("--tsv", "-t", type=str, dest="output_tsv", help="output tsv file", required=True)
-    parser.add_argument("--tsv_filtered", "-q", type=str, dest="output_filtered_tsv", help="output tsv file", required=True)
+    parser.add_argument("--tsv", "-t", type=str, dest="output_tsv", help="output tsv file before weeding", required=True)
+    parser.add_argument("--tsv_filtered", "-q", type=str, dest="output_filtered_tsv", help="output tsv file after weeding", required=True)
     args = parser.parse_args()
 
-    df, df_filtered = vcf_to_pandas_dataframe(args.vcf_file.name, args.samplename, args.bed.name, args.filter, args.verbose)
+    df, df_filtered = vcf_to_pandas_dataframe_all_annotations(args.vcf_file.name, args.samplename, args.bed.name, args.filter, args.verbose)
     df.to_csv(args.output_tsv, sep="\t", index=False)
     df_filtered.to_csv(args.output_filtered_tsv, sep="\t", index=False)
