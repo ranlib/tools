@@ -26,7 +26,7 @@ if __name__ == "__main__":
     #print(di)
 
     with open(args.fasta, encoding="ascii") as handle:
-        record = SeqIO.read(handle, "fasta")
+        genome = SeqIO.read(handle, "fasta")
 
     cols_output = ["position",
                    "true_ref",
@@ -38,9 +38,10 @@ if __name__ == "__main__":
                    "len_new_seq",
                    "agree"]
     do = pandas.DataFrame(columns = cols_output)
+    
     counters = {"SNP": 0 , "MNP": 0, "Insertion": 0, "Deletion": 0}
     for index, row in di.iterrows():
-        sequence = str(record.seq)
+        sequence = str(genome.seq)
         pos = row["final_annotation.Position"]
         ref = row["final_annotation.ReferenceNucleotide"].upper()
         alt = row["final_annotation.AlternativeNucleotide"].upper()
@@ -95,12 +96,17 @@ if __name__ == "__main__":
         do.loc[index, "len_seq"] = len(sequence)
         do.loc[index, "len_new_seq"] = len(new_seq)
                 
-        new_record_id = record.id + "_" + str(index+1)
-        new_record = SeqIO.SeqRecord(seq=Seq(new_seq), id=new_record_id, description=new_record_id)
+        new_genome_id = genome.id + "_" + str(index+1)
+        new_genome = SeqIO.SeqRecord(seq=Seq(new_seq), id=new_genome_id, description=new_genome_id)
         new_filename = pathlib.Path(args.fasta).name.replace(".fasta", "_" +str(index+1) + ".fasta")
-        r = SeqIO.write(new_record, new_filename , 'fasta')
-        if r!=1:
-            print('Error while writing sequence:  ' + new_record.id)
+        do.loc[index, "filename"] = new_filename
+        
+        #r = SeqIO.write(new_genome, new_filename , 'fasta')
+        #if r!=1:
+        #    print('Error while writing sequence:  ' + new_genome.id)
 
-            
-    do.to_csv(args.output, sep="\t")
+    # temprarily remove some columns
+    cols_to_drop = ["true_ref", "len_ref", "len_alt", "len_seq", "len_new_seq", "agree"]
+    do.drop(cols_to_drop, axis=1, inplace=True)
+    
+    do.to_csv(args.output, sep="\t", index=False)
