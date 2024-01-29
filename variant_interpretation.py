@@ -7,7 +7,8 @@ import argparse
 import json
 import pandas
 from sympy import Interval
-from vcf_to_pandas_dataframe_all_annotations import vcf_to_pandas_dataframe
+from vcf_to_pandas_dataframe_all_annotations import vcf_to_pandas_dataframe_all_annotations
+from vcf_to_pandas_dataframe import vcf_to_pandas_dataframe
 from coverage import calculate_average_depth
 from get_deletions_in_region import get_deletions_in_region
 
@@ -787,7 +788,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # vcf -> tsv
-    vcf_df, vcf_df_filtered = vcf_to_pandas_dataframe(args.vcf.name, args.samplename, args.bed.name, args.filter_genes, args.verbose)
+    vcf_df, vcf_df_filtered = vcf_to_pandas_dataframe_all_annotations(args.vcf.name, args.samplename, args.bed.name, args.filter_genes, args.verbose)
     if args.debug:
         vcf_df.to_csv(args.samplename + ".tsv",index=False,sep="\t")
         vcf_df_filtered.to_csv(args.samplename + "_filtered.tsv",index=False,sep="\t")
