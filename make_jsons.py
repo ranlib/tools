@@ -46,7 +46,6 @@ with open(args.json_template.name, "r", encoding="ascii") as stream:
         print(exc)
 
 R1s = [r for r in files if "_R1" in r]
-# print(R1s)
 if len(R1s) == 0:
     print(f"<E> make_jsons: length of fastq list = {len(R1s)}")
     sys.exit(1)
